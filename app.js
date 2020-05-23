@@ -17,7 +17,7 @@ router.get('/test', (req, res) => {
 app.use('/', router)
 
 // special for netlify functions, point /.netlify/functions at the router
-app.use('/.netlify/functions/index', router) // route to netlify lambda
+app.use('/.netlify/functions/app', router) // route to netlify lambda
 
 module.exports = app
 module.exports.handler = serverless(app);
