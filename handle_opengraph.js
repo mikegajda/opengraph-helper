@@ -2,13 +2,10 @@ const {promisify} = require('util');
 const stringHash = require("string-hash");
 let ogs = require('open-graph-scraper');
 const potrace = require('potrace');
-const fs = require('fs')
-const path = require('path')
-const axios = require('axios')
 const SVGO = require('svgo');
-const sharp = require('sharp')
 const AWS = require('aws-sdk');
 ogs = promisify(ogs).bind(ogs);
+let Jimp = require('jimp');
 
 let awsKeyId = process.env.MG_AWS_KEY_ID;
 let awsSecretAccessKey = process.env.MG_AWS_SECRET_ACCESS_KEY;
@@ -37,16 +34,12 @@ svgo = new SVGO({
   ],
 });
 
-async function uploadToAmazon(file) {
-  // Read content from the file
-  const fileContent = fs.readFileSync(file);
-  let parsedFilePath = path.parse(file);
-
+async function uploadBufferToAmazon(buffer, filename) {
   // Setting up S3 upload parameters
   const params = {
     Bucket: "cdn.mikegajda.com",
-    Key: parsedFilePath.name + parsedFilePath.ext, // File name you want to save as in S3
-    Body: fileContent,
+    Key: filename, // File name you want to save as in S3
+    Body: buffer,
     ACL: "public-read"
   };
 
@@ -60,83 +53,20 @@ async function uploadToAmazon(file) {
       }
     });
   })
-
 }
 
-function ensureDirectoryExistence(filePath) {
-  let dirname = path.dirname(filePath);
-  if (fs.existsSync(dirname)) {
-    return true;
-  }
-  ensureDirectoryExistence(dirname);
-  fs.mkdirSync(dirname);
-}
-
-
-async function downloadOGImage(url, urlHashKey) {
-  const urlToPath = path.parse(url)
-  const hash = urlHashKey
-  const realExt = urlToPath.ext.split("?")[0]
-  const pathToOutputFile = path.resolve(__dirname, "output", hash + realExt)
-  ensureDirectoryExistence(pathToOutputFile)
-  const writer = fs.createWriteStream(pathToOutputFile)
-
-  const response = await axios({
-    url,
-    method: 'GET',
-    responseType: 'stream'
-  })
-
-  response.data.pipe(writer)
-
+async function createSvg(buffer, params) {
   return new Promise((resolve, reject) => {
-    writer.on('finish', () => {
-      resolve(pathToOutputFile)
-    })
-    writer.on('error', reject)
-  })
-}
-
-async function createSvg(filePath, params) {
-  return new Promise((resolve, reject) => {
-    let parsedFilePath = path.parse(filePath);
-    potrace.trace(filePath, params, function (err, svg) {
+    potrace.trace(buffer, params, function (err, svg) {
       if (err) {
         reject();
       } else {
         svgo.optimize(svg).then(function (optimizedSvg) {
-          let svgPath = path.join(parsedFilePath.dir,
-              parsedFilePath.name + ".svg");
-          fs.writeFileSync(svgPath, optimizedSvg.data);
-          resolve(svgPath);
+          resolve(optimizedSvg.data);
         })
-
       }
     });
   });
-
-}
-
-async function resizeImage(filePath) {
-  let parsedFilePath = path.parse(filePath);
-  let newFilePath = path.join(parsedFilePath.dir,
-      parsedFilePath.name + "_100w" + parsedFilePath.ext);
-  await sharp(filePath)
-  .resize({ width: 100 })
-  .toFile(newFilePath);
-  return newFilePath;
-
-}
-
-async function writeOhResponseToFile(OGResponse, key){
-  let data = JSON.stringify(OGResponse, null, 2);
-
-  return new Promise((resolve, reject) => {
-    fs.writeFile(key + '.json', data, (err) => {
-      if (err) reject();
-      resolve(path.join(__dirname, key + ".json"))
-    });
-  })
 
 }
 
@@ -145,23 +75,29 @@ async function processUrl(url) {
     'url': url
   };
 
+  let awsResponse
   let urlHashKey = stringHash(url);
 
-  let response = await ogs(options)
-  let ogResopnseFilePath = await writeOhResponseToFile(response, urlHashKey);
-  let ogResponseUplaod = await uploadToAmazon(ogResopnseFilePath);
-  console.log("ogResponseFilePath=", ogResponseUplaod)
-  if (response.data && response.data.ogImage && response.data.ogImage.url) {
-    console.log(response.data.ogImage.url);
-    let pathToDownloadedImage = await downloadOGImage(response.data.ogImage.url, urlHashKey);
-    console.log("pathToDownloadedImage", pathToDownloadedImage);
+  let ogInfo = await ogs(options);
+  console.log("ogResponse=", ogInfo);
 
-    let pathToOptimizedImage = await resizeImage(pathToDownloadedImage);
-    let ogImageAwsUpload = await uploadToAmazon(pathToDownloadedImage);
-    console.log("ogImageAwsUpload=", ogImageAwsUpload);
+  if (ogInfo.data && ogInfo.data.ogImage && ogInfo.data.ogImage.url) {
+    let image = await Jimp.read(ogInfo.data.ogImage.url)
+    if (image.getWidth() > 1400) {
+      image = image.resize(1400, Jimp.AUTO);
+    }
+    let imageBuffer = await image.getBufferAsync("image/jpeg");
 
-    let pathToOptimizedImageAwsUpload = await uploadToAmazon(pathToOptimizedImage);
-    console.log("pathToOptimizedImageAwsUpload=", pathToOptimizedImageAwsUpload);
+    awsResponse = await uploadBufferToAmazon(imageBuffer,
+        `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`);
+    console.log("awsResponse=", awsResponse);
+
+    let smallerImageBuffer = await image.clone().quality(60).resize(100,
+        Jimp.AUTO).getBufferAsync("image/jpeg");
+    awsResponse = await uploadBufferToAmazon(smallerImageBuffer,
+        urlHashKey + "_100w.jpg");
+    console.log("awsResponse=", awsResponse);
+
     let svgParams = {
       color: `lightgray`,
       optTolerance: 0.4,
@@ -169,13 +105,19 @@ async function processUrl(url) {
       threshold: potrace.Potrace.THRESHOLD_AUTO,
       turnPolicy: potrace.Potrace.TURNPOLICY_MAJORITY,
     }
-    let pathToSvg = await createSvg(pathToOptimizedImage, svgParams);
-    console.log(pathToSvg);
+    let svgBuffer = await createSvg(smallerImageBuffer, svgParams);
+    awsResponse = await uploadBufferToAmazon(svgBuffer,
+        urlHashKey + ".svg");
+    console.log("awsResponse=", awsResponse);
 
-    let awsInfo = await uploadToAmazon(pathToSvg);
-    console.log("awsInfo=", awsInfo);
+    // finally, update ogInfo to reflect that we have gotten the image
+    ogInfo["processedImageSlug"] = `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`
   }
-  return response;
+
+  awsResponse = await uploadBufferToAmazon(JSON.stringify(ogInfo, null, 2),
+      urlHashKey + ".json");
+  console.log("awsResponse=", awsResponse);
+  return ogInfo;
 }
 
 // (async () => {
