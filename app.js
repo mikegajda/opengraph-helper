@@ -9,8 +9,8 @@ app.use(cors())
 
 
 const router = express.Router()
-router.get('/test', (req, res) => {
-  res.json({"key": "testValue"});
+router.get('/test/:url', (req, res) => {
+  res.json({"url": req.params["url"]});
 });
 
 // point the base route at the router
