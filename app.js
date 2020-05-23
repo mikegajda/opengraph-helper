@@ -9,8 +9,8 @@ app.use(cors())
 
 
 const router = express.Router()
-router.get('/test/:url', (req, res) => {
-  res.json({"url": req.params["url"]});
+router.get('/opengraph-info', (req, res) => {
+  res.json({"url": req.query["url"]});
 });
 
 // point the base route at the router
