@@ -10,8 +10,8 @@ const sharp = require('sharp')
 const AWS = require('aws-sdk');
 ogs = promisify(ogs).bind(ogs);
 
-let awsKeyId = process.env.AWS_KEY_ID;
-let awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+let awsKeyId = process.env.MG_AWS_KEY_ID;
+let awsSecretAccessKey = process.env.MG_AWS_SECRET_ACCESS_KEY;
 
 const s3 = new AWS.S3({
   accessKeyId: awsKeyId,
@@ -140,7 +140,7 @@ async function writeOhResponseToFile(OGResponse, key){
 
 }
 
-async function processOgImage(url) {
+async function processUrl(url) {
   let options = {
     'url': url
   };
@@ -175,14 +175,17 @@ async function processOgImage(url) {
     let awsInfo = await uploadToAmazon(pathToSvg);
     console.log("awsInfo=", awsInfo);
   }
+  return response;
 }
 
-(async () => {
-  try {
-    await processOgImage(
-        'https://www.theatlantic.com/health/archive/2019/09/dangers-peanut-allergy-drug/597997/')
-  } catch (e) {
-    console.error(e)
-    // Deal with the fact the chain failed
-  }
-})();
+// (async () => {
+//   try {
+//     await processUrl(
+//         'https://www.theatlantic.com/health/archive/2019/09/dangers-peanut-allergy-drug/597997/')
+//   } catch (e) {
+//     console.error(e)
+//     // Deal with the fact the chain failed
+//   }
+// })();
+
+module.exports.processUrl = processUrl
