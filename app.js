@@ -10,11 +10,8 @@ app.use(cors())
 
 const router = express.Router()
 router.get('/opengraph-info', async (req, res) => {
-  let response = await handle_opengraph.processUrl(req.query["url"])
-  res.json({
-    "url": req.query["url"],
-    "response": response
-  });
+  let response = await handle_opengraph.processUrl(req.query["url"], req.query["breakCache"] === "true")
+  res.json(response);
 });
 
 // point the base route at the router

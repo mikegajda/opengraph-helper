@@ -70,19 +70,55 @@ async function createSvg(buffer, params) {
 
 }
 
-async function processUrl(url) {
-  let options = {
-    'url': url
+async function checkIfFileExistsInS3(filename){
+  const params = {
+    Bucket: "cdn.mikegajda.com",
+    Key: filename, // File name you want to save as in S3
   };
+  return new Promise((resolve, reject) => {
+    // Uploading files to the bucket
+    s3.headObject(params, function (err, data) {
+      if (err) {
+        resolve(false)
+      } else {
+        resolve(true)
+      }
+    });
+  })
+}
 
+async function getFileInS3(filename){
+  const params = {
+    Bucket: "cdn.mikegajda.com",
+    Key: filename
+  };
+  return new Promise((resolve, reject) => {
+    s3.getObject(params, function(err, data) {
+      if (err)
+        reject(err)
+
+      resolve(data.Body.toString());
+    });
+  })
+
+}
+
+async function getOpenGraphInfo(url){
+  return new Promise((resolve, reject) => {
+    ogs({
+      url: url
+    }, function (error, results) {
+      resolve(results)
+    });
+  })
+
+}
+
+async function processOgData(ogData, urlHashKey){
   let awsResponse
-  let urlHashKey = stringHash(url);
 
-  let ogInfo = await ogs(options);
-  console.log("ogResponse=", ogInfo);
-
-  if (ogInfo.data && ogInfo.data.ogImage && ogInfo.data.ogImage.url) {
-    let image = await Jimp.read(ogInfo.data.ogImage.url)
+  if (ogData.ogImage && ogData.ogImage.url) {
+    let image = await Jimp.read(ogData.ogImage.url)
     if (image.getWidth() > 1400) {
       image = image.resize(1400, Jimp.AUTO);
     }
@@ -90,13 +126,13 @@ async function processUrl(url) {
 
     awsResponse = await uploadBufferToAmazon(imageBuffer,
         `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`);
-    console.log("awsResponse=", awsResponse);
+    console.log("awsResponse=", awsResponse.Location);
 
     let smallerImageBuffer = await image.clone().quality(60).resize(100,
         Jimp.AUTO).getBufferAsync("image/jpeg");
     awsResponse = await uploadBufferToAmazon(smallerImageBuffer,
         urlHashKey + "_100w.jpg");
-    console.log("awsResponse=", awsResponse);
+    console.log("awsResponse=", awsResponse.Location);
 
     let svgParams = {
       color: `lightgray`,
@@ -108,16 +144,53 @@ async function processUrl(url) {
     let svgBuffer = await createSvg(smallerImageBuffer, svgParams);
     awsResponse = await uploadBufferToAmazon(svgBuffer,
         urlHashKey + ".svg");
-    console.log("awsResponse=", awsResponse);
+    console.log("awsResponse=", awsResponse.Location);
 
-    // finally, update ogInfo to reflect that we have gotten the image
-    ogInfo["processedImageSlug"] = `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`
+    // finally, update ogData to reflect that we have gotten the image
+    ogData["processedImageHash"] = `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`
   }
 
-  awsResponse = await uploadBufferToAmazon(JSON.stringify(ogInfo, null, 2),
+  awsResponse = await uploadBufferToAmazon(JSON.stringify(ogData),
       urlHashKey + ".json");
-  console.log("awsResponse=", awsResponse);
-  return ogInfo;
+  console.log("awsResponse=", awsResponse.Location);
+  return ogData;
+}
+
+async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey){
+
+  let ogInfo = await getOpenGraphInfo(url);
+
+  if (ogInfo["success"]){
+    ogInfo["data"]["success"] = true
+    return await processOgData(ogInfo["data"], urlHashKey)
+  }
+  else {
+    return {
+      success: false,
+      ogUrl: url
+    }
+  }
+}
+
+async function processUrl(url, breakCache) {
+  let urlHashKey = stringHash(url);
+
+  let existsInS3 = await checkIfFileExistsInS3(`${urlHashKey}.json`)
+  if (existsInS3 && !breakCache){
+    try {
+      console.log("found in S3, will return early")
+      let stringifiedJson = await getFileInS3(`${urlHashKey}.json`)
+      return JSON.parse(stringifiedJson)
+    }
+    catch (e){
+      console.error("Error while fetching file, will instead do a new fetch")
+      return await fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey)
+    }
+  }
+  else {
+    let response = await fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey)
+    return response
+  }
 }
 
 // (async () => {
