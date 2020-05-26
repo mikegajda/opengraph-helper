@@ -126,28 +126,31 @@ async function processOgData(ogData, urlHashKey){
 
     awsResponse = await uploadBufferToAmazon(imageBuffer,
         `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`);
+
+    awsResponse = await uploadBufferToAmazon(imageBuffer,
+        `${urlHashKey}.jpg`);
     console.log("awsResponse=", awsResponse.Location);
 
-    let smallerImageBuffer = await image.clone().quality(60).resize(100,
-        Jimp.AUTO).getBufferAsync("image/jpeg");
-    awsResponse = await uploadBufferToAmazon(smallerImageBuffer,
-        urlHashKey + "_100w.jpg");
-    console.log("awsResponse=", awsResponse.Location);
-
-    let svgParams = {
-      color: `lightgray`,
-      optTolerance: 0.4,
-      turdSize: 500,
-      threshold: potrace.Potrace.THRESHOLD_AUTO,
-      turnPolicy: potrace.Potrace.TURNPOLICY_MAJORITY,
-    }
-    let svgBuffer = await createSvg(smallerImageBuffer, svgParams);
-    awsResponse = await uploadBufferToAmazon(svgBuffer,
-        urlHashKey + ".svg");
-    console.log("awsResponse=", awsResponse.Location);
+    // let smallerImageBuffer = await image.clone().quality(60).resize(100,
+    //     Jimp.AUTO).getBufferAsync("image/jpeg");
+    // awsResponse = await uploadBufferToAmazon(smallerImageBuffer,
+    //     urlHashKey + "_100w.jpg");
+    // console.log("awsResponse=", awsResponse.Location);
+    //
+    // let svgParams = {
+    //   color: `lightgray`,
+    //   optTolerance: 0.4,
+    //   turdSize: 500,
+    //   threshold: potrace.Potrace.THRESHOLD_AUTO,
+    //   turnPolicy: potrace.Potrace.TURNPOLICY_MAJORITY,
+    // }
+    // let svgBuffer = await createSvg(smallerImageBuffer, svgParams);
+    // awsResponse = await uploadBufferToAmazon(svgBuffer,
+    //     urlHashKey + ".svg");
+    // console.log("awsResponse=", awsResponse.Location);
 
     // finally, update ogData to reflect that we have gotten the image
-    ogData["processedImageHash"] = `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`
+    ogData["processedImageHash"] = `${urlHashKey}.jpg`
   }
 
   awsResponse = await uploadBufferToAmazon(JSON.stringify(ogData),
