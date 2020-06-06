@@ -1,11 +1,11 @@
 info face="Gothic A1" size=100 bold=0 italic=0 charset="" unicode=1 stretchH=0 smooth=0 aa=1 padding=0,0,0,0 spacing=0,0 outline=0
 common lineHeight=125 base=80 scaleW=256 scaleH=256 pages=6 packed=0 alphaChnl=0 redChnl=0 greenChnl=0 blueChnl=0
-page id=0 file="GothicA1-SemiBold.ttf_0.png"
-page id=1 file="GothicA1-SemiBold.ttf_1.png"
-page id=2 file="GothicA1-SemiBold.ttf_2.png"
-page id=3 file="GothicA1-SemiBold.ttf_3.png"
-page id=4 file="GothicA1-SemiBold.ttf_4.png"
-page id=5 file="GothicA1-SemiBold.ttf_5.png"
+page id=0 file="GothicA1-SemiBold-100.ttf_0.png"
+page id=1 file="GothicA1-SemiBold-100.ttf_1.png"
+page id=2 file="GothicA1-SemiBold-100.ttf_2.png"
+page id=3 file="GothicA1-SemiBold-100.ttf_3.png"
+page id=4 file="GothicA1-SemiBold-100.ttf_4.png"
+page id=5 file="GothicA1-SemiBold-100.ttf_5.png"
 chars count=95
 char id=32 x=0 y=0 width=0 height=0 xoffset=0 yoffset=0 xadvance=24 page=0 chnl=15
 char id=33 x=240 y=105 width=16 height=77 xoffset=8 yoffset=4 xadvance=32 page=0 chnl=15
