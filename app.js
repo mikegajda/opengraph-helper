@@ -3,7 +3,6 @@ const express = require('express');
 const serverless = require('serverless-http');
 const app = express();
 const cors = require('cors');
-const fs = require('fs');
 let handle_opengraph = require("./handle_opengraph");
 
 app.use(express.json())

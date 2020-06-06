@@ -6,6 +6,7 @@ const SVGO = require('svgo');
 const AWS = require('aws-sdk');
 ogs = promisify(ogs).bind(ogs);
 let Jimp = require('jimp');
+const url = require('url');
 
 let awsKeyId = process.env.MG_AWS_KEY_ID;
 let awsSecretAccessKey = process.env.MG_AWS_SECRET_ACCESS_KEY;
@@ -190,8 +191,11 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey) {
   }
 }
 
-async function processUrl(url, breakCache) {
-  let urlHashKey = stringHash(url);
+async function processUrl(urlToParse, breakCache) {
+  let parsedUrl = url.parse(urlToParse);
+  let cleanUrl = parsedUrl.protocol +  "//" + parsedUrl.host + parsedUrl.pathname
+  console.log("cleanUrl=", cleanUrl);
+  let urlHashKey = stringHash(cleanUrl);
 
   let existsInS3 = await checkIfFileExistsInS3(`${urlHashKey}.json`)
   if (existsInS3 && !breakCache) {
@@ -201,10 +205,10 @@ async function processUrl(url, breakCache) {
       return JSON.parse(stringifiedJson)
     } catch (e) {
       console.error("Error while fetching file, will instead do a new fetch")
-      return await fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey)
+      return await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl, urlHashKey)
     }
   } else {
-    let response = await fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey)
+    let response = await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl, urlHashKey)
     return response
   }
 }
