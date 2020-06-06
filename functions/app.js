@@ -10,6 +10,8 @@ app.use(cors())
 
 const router = express.Router()
 router.get('/opengraph-info', async (req, res) => {
+  console.log("i'm here")
+  console.log("__dirname=", __dirname)
   let response = await handle_opengraph.processUrl(req.query["url"], req.query["breakCache"] === "true")
   res.json(response);
 });
