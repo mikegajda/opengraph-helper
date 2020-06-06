@@ -11,19 +11,6 @@ app.use(cors())
 
 const router = express.Router()
 router.get('/opengraph-info', async (req, res) => {
-  console.log("i'm here")
-  console.log("__dirname=", __dirname)
-  fs.readdir(__dirname, function (err, files) {
-    //handling error
-    if (err) {
-      return console.log('Unable to scan directory: ' + err);
-    }
-    //listing all files using forEach
-    files.forEach(function (file) {
-      // Do whatever you want to do with the file
-      console.log(file);
-    });
-  });
   let response = await handle_opengraph.processUrl(req.query["url"], req.query["breakCache"] === "true")
   res.json(response);
 });
