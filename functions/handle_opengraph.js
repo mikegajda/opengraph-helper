@@ -10,7 +10,7 @@ let Jimp = require('jimp');
 let awsKeyId = process.env.MG_AWS_KEY_ID;
 let awsSecretAccessKey = process.env.MG_AWS_SECRET_ACCESS_KEY;
 
-const currentDir = process.env.LAMBDA_TASK_ROOT ? process.env.LAMBDA_TASK_ROOT : __dirname;
+const currentDir = process.env.LAMBDA_TASK_ROOT ? process.env.LAMBDA_TASK_ROOT + "/functions" : __dirname;
 
 const s3 = new AWS.S3({
   accessKeyId: awsKeyId,
@@ -279,16 +279,16 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
 
 }
 
-(async () => {
-  try {
-    let ogData = await processUrl(
-        'https://www.nytimes.com/2020/06/05/sports/football/trump-anthem-kneeling-kaepernick.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
-    // await processIgStoryImageToBuffer(ogData);
-    // await processIgFeedImageToBuffer(ogData);
-  } catch (e) {
-    console.error(e)
-    // Deal with the fact the chain failed
-  }
-})();
+// (async () => {
+//   try {
+//     let ogData = await processUrl(
+//         'https://www.nytimes.com/2020/06/05/sports/football/trump-anthem-kneeling-kaepernick.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
+//     // await processIgStoryImageToBuffer(ogData);
+//     // await processIgFeedImageToBuffer(ogData);
+//   } catch (e) {
+//     console.error(e)
+//     // Deal with the fact the chain failed
+//   }
+// })();
 
 module.exports.processUrl = processUrl
