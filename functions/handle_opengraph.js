@@ -244,8 +244,8 @@ async function processIgStoryImageToBuffer(ogData, ogImage) {
 
 
   // generated with https://ttf2fnt.com/
-  let titleFont = await Jimp.loadFont(currentDir + '/GothicA1-SemiBold-85.ttf.fnt');
-  let urlFont = await Jimp.loadFont(currentDir + '/GothicA1-Regular-50.ttf.fnt');
+  let titleFont = await Jimp.loadFont(require.resolve(currentDir + '/GothicA1-SemiBold-85.ttf.fnt'));
+  let urlFont = await Jimp.loadFont(require.resolve(currentDir + '/GothicA1-Regular-50.ttf.fnt'));
 
   let url = extractHostname(ogData.ogUrl)
   let title = ogData.ogTitle
@@ -267,8 +267,8 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
   let outputImage = background.composite(ogImage, 0, 225);
 
   // generated with https://ttf2fnt.com/
-  let titleFont = await Jimp.loadFont(currentDir + '/GothicA1-SemiBold-50.ttf.fnt');
-  let urlFont = await Jimp.loadFont(currentDir + '/GothicA1-Regular-32.ttf.fnt');
+  let titleFont = await Jimp.loadFont(require.resolve(currentDir + '/GothicA1-SemiBold-50.ttf.fnt'));
+  let urlFont = await Jimp.loadFont(require.resolve(currentDir + '/GothicA1-Regular-32.ttf.fnt'));
 
   let url = extractHostname(ogData.ogUrl)
   let title = ogData.ogTitle
