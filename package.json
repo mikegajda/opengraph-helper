@@ -2,7 +2,7 @@
   "name": "opengraph-helper",
   "version": "1.0.0",
   "description": "",
-  "main": "handle_opengraph.js",
+  "main": "functions/handle_opengraph.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

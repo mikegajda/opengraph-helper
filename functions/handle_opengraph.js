@@ -242,8 +242,8 @@ async function processIgStoryImageToBuffer(ogData, ogImage) {
 
 
   // generated with https://ttf2fnt.com/
-  let titleFont = await Jimp.loadFont('./GothicA1-SemiBold-85/GothicA1-SemiBold.ttf.fnt');
-  let urlFont = await Jimp.loadFont('./GothicA1-Regular-50/GothicA1-Regular.ttf.fnt');
+  let titleFont = await Jimp.loadFont(__dirname + '/GothicA1-SemiBold-85/GothicA1-SemiBold.ttf.fnt');
+  let urlFont = await Jimp.loadFont(__dirname + '/GothicA1-Regular-50/GothicA1-Regular.ttf.fnt');
 
   let url = extractHostname(ogData.ogUrl)
   let title = ogData.ogTitle
@@ -265,8 +265,8 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
   let outputImage = background.composite(ogImage, 0, 225);
 
   // generated with https://ttf2fnt.com/
-  let titleFont = await Jimp.loadFont('./GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt');
-  let urlFont = await Jimp.loadFont('./GothicA1-Regular-32/GothicA1-Regular.ttf.fnt');
+  let titleFont = await Jimp.loadFont(__dirname + '/GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt');
+  let urlFont = await Jimp.loadFont(__dirname + '/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt');
 
   let url = extractHostname(ogData.ogUrl)
   let title = ogData.ogTitle
@@ -277,16 +277,16 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
 
 }
 
-// (async () => {
-//   try {
-//     let ogData = await processUrl(
-//         'https://www.nytimes.com/2020/06/05/sports/football/trump-anthem-kneeling-kaepernick.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
-//     // await processIgStoryImageToBuffer(ogData);
-//     // await processIgFeedImageToBuffer(ogData);
-//   } catch (e) {
-//     console.error(e)
-//     // Deal with the fact the chain failed
-//   }
-// })();
+(async () => {
+  try {
+    let ogData = await processUrl(
+        'https://www.nytimes.com/2020/06/05/sports/football/trump-anthem-kneeling-kaepernick.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
+    // await processIgStoryImageToBuffer(ogData);
+    // await processIgFeedImageToBuffer(ogData);
+  } catch (e) {
+    console.error(e)
+    // Deal with the fact the chain failed
+  }
+})();
 
 module.exports.processUrl = processUrl
