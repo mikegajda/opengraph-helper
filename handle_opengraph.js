@@ -70,7 +70,7 @@ async function createSvg(buffer, params) {
 
 }
 
-async function checkIfFileExistsInS3(filename){
+async function checkIfFileExistsInS3(filename) {
   const params = {
     Bucket: "cdn.mikegajda.com",
     Key: filename, // File name you want to save as in S3
@@ -87,15 +87,16 @@ async function checkIfFileExistsInS3(filename){
   })
 }
 
-async function getFileInS3(filename){
+async function getFileInS3(filename) {
   const params = {
     Bucket: "cdn.mikegajda.com",
     Key: filename
   };
   return new Promise((resolve, reject) => {
-    s3.getObject(params, function(err, data) {
-      if (err)
+    s3.getObject(params, function (err, data) {
+      if (err) {
         reject(err)
+      }
 
       resolve(data.Body.toString());
     });
@@ -103,7 +104,7 @@ async function getFileInS3(filename){
 
 }
 
-async function getOpenGraphInfo(url){
+async function getOpenGraphInfo(url) {
   return new Promise((resolve, reject) => {
     ogs({
       url: url
@@ -114,24 +115,38 @@ async function getOpenGraphInfo(url){
 
 }
 
-async function processOgData(ogData, urlHashKey){
+async function processOgData(ogData, urlHashKey) {
   let awsResponse
 
   if (ogData.ogImage && ogData.ogImage.url) {
-    let image = await Jimp.read(ogData.ogImage.url)
-    if (image.getWidth() > 1400) {
-      image = image.resize(1400, Jimp.AUTO);
+    let ogImage = await Jimp.read(ogData.ogImage.url)
+    if (ogImage.getWidth() > 1400) {
+      ogImage = ogImage.resize(1400, Jimp.AUTO);
     }
-    let imageBuffer = await image.getBufferAsync("image/jpeg");
+    let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
+
+    let igStoryBuffer = await processIgStoryImageToBuffer(ogData, ogImage);
+    let igFeedBuffer = await processIgFeedImageToBuffer(ogData, ogImage);
 
     awsResponse = await uploadBufferToAmazon(imageBuffer,
-        `${urlHashKey}_${image.getWidth()}w_${image.getHeight()}h.jpg`);
+        `${urlHashKey}_${ogImage.getWidth()}w_${ogImage.getHeight()}h.jpg`);
+    console.log("awsResponse=", awsResponse.Location);
+
+    awsResponse = await uploadBufferToAmazon(igStoryBuffer,
+        `${urlHashKey}_ig_story.jpg`);
+    console.log("awsResponse=", awsResponse.Location);
+
+
+    awsResponse = await uploadBufferToAmazon(igFeedBuffer,
+        `${urlHashKey}_ig_feed.jpg`);
+    console.log("awsResponse=", awsResponse.Location);
+
 
     awsResponse = await uploadBufferToAmazon(imageBuffer,
         `${urlHashKey}.jpg`);
     console.log("awsResponse=", awsResponse.Location);
 
-    // let smallerImageBuffer = await image.clone().quality(60).resize(100,
+    // let smallerImageBuffer = await ogImage.clone().quality(60).resize(100,
     //     Jimp.AUTO).getBufferAsync("image/jpeg");
     // awsResponse = await uploadBufferToAmazon(smallerImageBuffer,
     //     urlHashKey + "_100w.jpg");
@@ -149,7 +164,7 @@ async function processOgData(ogData, urlHashKey){
     //     urlHashKey + ".svg");
     // console.log("awsResponse=", awsResponse.Location);
 
-    // finally, update ogData to reflect that we have gotten the image
+    // finally, update ogData to reflect that we have gotten the ogImage
     ogData["processedImageHash"] = `${urlHashKey}.jpg`
   }
 
@@ -159,15 +174,14 @@ async function processOgData(ogData, urlHashKey){
   return ogData;
 }
 
-async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey){
+async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey) {
 
   let ogInfo = await getOpenGraphInfo(url);
 
-  if (ogInfo["success"]){
+  if (ogInfo["success"]) {
     ogInfo["data"]["success"] = true
     return await processOgData(ogInfo["data"], urlHashKey)
-  }
-  else {
+  } else {
     return {
       success: false,
       ogUrl: url
@@ -179,31 +193,100 @@ async function processUrl(url, breakCache) {
   let urlHashKey = stringHash(url);
 
   let existsInS3 = await checkIfFileExistsInS3(`${urlHashKey}.json`)
-  if (existsInS3 && !breakCache){
+  if (existsInS3 && !breakCache) {
     try {
       console.log("found in S3, will return early")
       let stringifiedJson = await getFileInS3(`${urlHashKey}.json`)
       return JSON.parse(stringifiedJson)
-    }
-    catch (e){
+    } catch (e) {
       console.error("Error while fetching file, will instead do a new fetch")
       return await fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey)
     }
-  }
-  else {
+  } else {
     let response = await fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey)
     return response
   }
 }
 
-// (async () => {
-//   try {
-//     await processUrl(
-//         'https://www.theatlantic.com/health/archive/2019/09/dangers-peanut-allergy-drug/597997/')
-//   } catch (e) {
-//     console.error(e)
-//     // Deal with the fact the chain failed
-//   }
-// })();
+
+function extractHostname(url) {
+  var hostname;
+  //find & remove protocol (http, ftp, etc.) and get hostname
+
+  if (url.indexOf("//") > -1) {
+    hostname = url.split('/')[2];
+  } else {
+    hostname = url.split('/')[0];
+  }
+
+  //find & remove port number
+  hostname = hostname.split(':')[0];
+  //find & remove "?"
+  hostname = hostname.split('?')[0];
+
+  // remove www. if it exists
+  if (hostname.indexOf("www.") > -1) {
+    hostname = hostname.split('www.')[1];
+  }
+
+  return hostname;
+}
+
+async function processIgStoryImageToBuffer(ogData, ogImage) {
+  ogImage = ogImage.cover(1080, 960);
+  // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
+
+  let background = await new Jimp(1080, 1920, '#01bc84')
+
+  let outputImage = background.composite(ogImage, 0, 185);
+
+
+  // generated with https://ttf2fnt.com/
+  let titleFont = await Jimp.loadFont('./GothicA1-SemiBold-85/GothicA1-SemiBold.ttf.fnt');
+  let urlFont = await Jimp.loadFont('./GothicA1-Regular-50/GothicA1-Regular.ttf.fnt');
+
+  let url = extractHostname(ogData.ogUrl)
+  let title = ogData.ogTitle
+  let footerText = "Link in bio"
+  outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
+  outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
+  outputImage = await outputImage.print(urlFont, 50, 1815, {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 970);
+
+  return await outputImage.getBufferAsync("image/jpeg");
+
+}
+
+async function processIgFeedImageToBuffer(ogData, ogImage) {
+  ogImage = ogImage.cover(1080, 855);
+  // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
+
+  let background = await new Jimp(1080, 1080, '#01bc84')
+
+  let outputImage = background.composite(ogImage, 0, 225);
+
+  // generated with https://ttf2fnt.com/
+  let titleFont = await Jimp.loadFont('./GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt');
+  let urlFont = await Jimp.loadFont('./GothicA1-Regular-32/GothicA1-Regular.ttf.fnt');
+
+  let url = extractHostname(ogData.ogUrl)
+  let title = ogData.ogTitle
+  outputImage = await outputImage.print(urlFont, 30, 30, url, 1050);
+  outputImage = await outputImage.print(titleFont, 30, 85, title, 1050);
+
+  return await outputImage.getBufferAsync("image/jpeg");
+
+}
+
+(async () => {
+  try {
+    let ogData = await processUrl(
+        'https://www.nytimes.com/2020/06/05/sports/football/trump-anthem-kneeling-kaepernick.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
+    // await processIgStoryImageToBuffer(ogData);
+    // await processIgFeedImageToBuffer(ogData);
+  } catch (e) {
+    console.error(e)
+    // Deal with the fact the chain failed
+  }
+})();
 
 module.exports.processUrl = processUrl
