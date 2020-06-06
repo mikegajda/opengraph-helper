@@ -7,7 +7,7 @@ const fs = require('fs');
 let handle_opengraph = require("./handle_opengraph");
 
 let font1 = require('./GothicA1-Regular-32')
-let font1 = require('./GothicA1-Regular-32/GothicA1-Regular-32.ttf.fnt')
+let font12 = require('./GothicA1-Regular-32/GothicA1-Regular-32.ttf.fnt')
 let font2 = require('./GothicA1-Regular-32.ttf.fnt')
 let font3 = require('./GothicA1-Regular-32.ttf_0.png')
 
