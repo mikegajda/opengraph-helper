@@ -251,7 +251,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage) {
   let urlFont = await Jimp.loadFont( "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50/GothicA1-Regular.ttf.fnt");
 
   let url = extractHostname(ogData.ogUrl)
-  let title = ogData.ogTitle
+  let title = ogData.ogTitle.replace("’", "'")
   let footerText = "Link in bio"
   outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
   outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
@@ -274,7 +274,7 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
   let urlFont = await Jimp.loadFont("https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt");
 
   let url = extractHostname(ogData.ogUrl)
-  let title = ogData.ogTitle
+  let title = ogData.ogTitle.replace("’", "'")
   outputImage = await outputImage.print(urlFont, 30, 30, url, 1050);
   outputImage = await outputImage.print(titleFont, 30, 85, title, 1050);
 
@@ -282,16 +282,16 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
 
 }
 
-// (async () => {
-//   try {
-//     let ogData = await processUrl(
-//         'https://www.nytimes.com/2020/06/05/sports/football/trump-anthem-kneeling-kaepernick.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
-//     // await processIgStoryImageToBuffer(ogData);
-//     // await processIgFeedImageToBuffer(ogData);
-//   } catch (e) {
-//     console.error(e)
-//     // Deal with the fact the chain failed
-//   }
-// })();
+(async () => {
+  try {
+    let ogData = await processUrl(
+        'https://www.nytimes.com/interactive/2020/06/07/us/george-floyd-protest-aerial-photos.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
+    // await processIgStoryImageToBuffer(ogData);
+    // await processIgFeedImageToBuffer(ogData);
+  } catch (e) {
+    console.error(e)
+    // Deal with the fact the chain failed
+  }
+})();
 
 module.exports.processUrl = processUrl
