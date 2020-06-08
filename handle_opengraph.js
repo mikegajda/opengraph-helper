@@ -282,16 +282,16 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
 
 }
 
-(async () => {
-  try {
-    let ogData = await processUrl(
-        'https://www.nytimes.com/interactive/2020/06/07/us/george-floyd-protest-aerial-photos.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
-    // await processIgStoryImageToBuffer(ogData);
-    // await processIgFeedImageToBuffer(ogData);
-  } catch (e) {
-    console.error(e)
-    // Deal with the fact the chain failed
-  }
-})();
+// (async () => {
+//   try {
+//     let ogData = await processUrl(
+//         'https://www.nytimes.com/interactive/2020/06/07/us/george-floyd-protest-aerial-photos.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
+//     // await processIgStoryImageToBuffer(ogData);
+//     // await processIgFeedImageToBuffer(ogData);
+//   } catch (e) {
+//     console.error(e)
+//     // Deal with the fact the chain failed
+//   }
+// })();
 
 module.exports.processUrl = processUrl
