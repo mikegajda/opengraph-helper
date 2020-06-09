@@ -126,18 +126,19 @@ async function processOgData(ogData, urlHashKey) {
       ogImage = ogImage.resize(1400, Jimp.AUTO);
     }
     ogImage = ogImage.quality(90)
-    let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
-    console.log("got imageBuffer")
+    let imageBufferPromise = ogImage.getBufferAsync("image/jpeg");
+    let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage);
+    let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage);
+
+    let [imageBuffer, igFeedBuffer, igStoryBuffer] = await Promise.all([imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise])
+    console.log("got image buffers")
+
     let imageBufferAwsPromise = uploadBufferToAmazon(imageBuffer,
         `${urlHashKey}.jpg`);
 
-    let igStoryBuffer = await processIgStoryImageToBuffer(ogData, ogImage);
-    console.log("got igStoryBuffer")
     let igStoryBufferBufferAwsPromise = uploadBufferToAmazon(igStoryBuffer,
         `${urlHashKey}_ig_story.jpg`)
 
-    let igFeedBuffer = await processIgFeedImageToBuffer(ogData, ogImage);
-    console.log("got igFeedBuffer")
     let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
         `${urlHashKey}_ig_feed.jpg`);
 
@@ -265,16 +266,16 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
 
 }
 
-(async () => {
-  try {
-    let ogData = await processUrl(
-        'https://www.nytimes.com/interactive/2020/06/07/us/george-floyd-protest-aerial-photos.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
-    // await processIgStoryImageToBuffer(ogData);
-    // await processIgFeedImageToBuffer(ogData);
-  } catch (e) {
-    console.error(e)
-    // Deal with the fact the chain failed
-  }
-})();
+// (async () => {
+//   try {
+//     let ogData = await processUrl(
+//         'https://www.nytimes.com/interactive/2020/06/07/us/george-floyd-protest-aerial-photos.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
+//     // await processIgStoryImageToBuffer(ogData);
+//     // await processIgFeedImageToBuffer(ogData);
+//   } catch (e) {
+//     console.error(e)
+//     // Deal with the fact the chain failed
+//   }
+// })();
 
 module.exports.processUrl = processUrl
