@@ -125,48 +125,28 @@ async function processOgData(ogData, urlHashKey) {
     if (ogImage.getWidth() > 1400) {
       ogImage = ogImage.resize(1400, Jimp.AUTO);
     }
+    ogImage = ogImage.quality(90)
     let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
+    console.log("got imageBuffer")
+    let imageBufferAwsPromise = uploadBufferToAmazon(imageBuffer,
+        `${urlHashKey}.jpg`);
 
     let igStoryBuffer = await processIgStoryImageToBuffer(ogData, ogImage);
+    console.log("got igStoryBuffer")
+    let igStoryBufferBufferAwsPromise = uploadBufferToAmazon(igStoryBuffer,
+        `${urlHashKey}_ig_story.jpg`)
+
     let igFeedBuffer = await processIgFeedImageToBuffer(ogData, ogImage);
-
-    awsResponse = await uploadBufferToAmazon(imageBuffer,
-        `${urlHashKey}_${ogImage.getWidth()}w_${ogImage.getHeight()}h.jpg`);
-    console.log("awsResponse=", awsResponse.Location);
-
-    awsResponse = await uploadBufferToAmazon(igStoryBuffer,
-        `${urlHashKey}_ig_story.jpg`);
-    console.log("awsResponse=", awsResponse.Location);
-
-
-    awsResponse = await uploadBufferToAmazon(igFeedBuffer,
+    console.log("got igFeedBuffer")
+    let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
         `${urlHashKey}_ig_feed.jpg`);
-    console.log("awsResponse=", awsResponse.Location);
 
 
-    awsResponse = await uploadBufferToAmazon(imageBuffer,
-        `${urlHashKey}.jpg`);
-    console.log("awsResponse=", awsResponse.Location);
+    let [response1, response2, response3] = await Promise.all([imageBufferAwsPromise, igStoryBufferBufferAwsPromise, igFeedBufferBufferAwsPromise])
+    console.log("awsResponse=", response1.Location);
+    console.log("awsResponse=", response2.Location);
+    console.log("awsResponse=", response3.Location);
 
-    // let smallerImageBuffer = await ogImage.clone().quality(60).resize(100,
-    //     Jimp.AUTO).getBufferAsync("image/jpeg");
-    // awsResponse = await uploadBufferToAmazon(smallerImageBuffer,
-    //     urlHashKey + "_100w.jpg");
-    // console.log("awsResponse=", awsResponse.Location);
-    //
-    // let svgParams = {
-    //   color: `lightgray`,
-    //   optTolerance: 0.4,
-    //   turdSize: 500,
-    //   threshold: potrace.Potrace.THRESHOLD_AUTO,
-    //   turnPolicy: potrace.Potrace.TURNPOLICY_MAJORITY,
-    // }
-    // let svgBuffer = await createSvg(smallerImageBuffer, svgParams);
-    // awsResponse = await uploadBufferToAmazon(svgBuffer,
-    //     urlHashKey + ".svg");
-    // console.log("awsResponse=", awsResponse.Location);
-
-    // finally, update ogData to reflect that we have gotten the ogImage
     ogData["processedImageHash"] = `${urlHashKey}.jpg`
   }
 
@@ -257,6 +237,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage) {
   outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
   outputImage = await outputImage.print(urlFont, 50, 1815, {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 970);
 
+  outputImage = outputImage.quality(90);
   return await outputImage.getBufferAsync("image/jpeg");
 
 }
@@ -278,20 +259,22 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
   outputImage = await outputImage.print(urlFont, 30, 30, url, 1050);
   outputImage = await outputImage.print(titleFont, 30, 85, title, 1050);
 
+  outputImage = outputImage.quality(90);
+
   return await outputImage.getBufferAsync("image/jpeg");
 
 }
 
-// (async () => {
-//   try {
-//     let ogData = await processUrl(
-//         'https://www.nytimes.com/interactive/2020/06/07/us/george-floyd-protest-aerial-photos.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
-//     // await processIgStoryImageToBuffer(ogData);
-//     // await processIgFeedImageToBuffer(ogData);
-//   } catch (e) {
-//     console.error(e)
-//     // Deal with the fact the chain failed
-//   }
-// })();
+(async () => {
+  try {
+    let ogData = await processUrl(
+        'https://www.nytimes.com/interactive/2020/06/07/us/george-floyd-protest-aerial-photos.html?action=click&module=Top%20Stories&pgtype=Homepage', true)
+    // await processIgStoryImageToBuffer(ogData);
+    // await processIgFeedImageToBuffer(ogData);
+  } catch (e) {
+    console.error(e)
+    // Deal with the fact the chain failed
+  }
+})();
 
 module.exports.processUrl = processUrl
