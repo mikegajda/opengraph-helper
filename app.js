@@ -5,7 +5,7 @@ const app = express();
 const cors = require('cors');
 let handle_opengraph = require("./handle_opengraph");
 
-let allowedDomains = [/\.mikegajda\.com$/, /\.michaelgajda\.com$/, /\.mikegajda\.netlify\.app$/]
+let allowedDomains = ["https://mikegajda.com", "https://michaelgajda.com", /\.mikegajda\.com$/, /\.michaelgajda\.com$/, /\.mikegajda\.netlify\.app$/]
 app.use(express.json())
 app.use(cors({
   origin: allowedDomains
