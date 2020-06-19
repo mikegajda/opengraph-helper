@@ -257,8 +257,8 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
 
   let url = extractHostname(ogData.ogUrl)
   let title = ogData.ogTitle.replace("’", "'")
-  outputImage = await outputImage.print(urlFont, 30, 30, url, 1050);
-  outputImage = await outputImage.print(titleFont, 30, 85, title, 1050);
+  outputImage = await outputImage.print(urlFont, 30, 30, url, 1020);
+  outputImage = await outputImage.print(titleFont, 30, 85, title, 1020);
 
   outputImage = outputImage.quality(90);
 
