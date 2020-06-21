@@ -229,6 +229,7 @@ function fixTitle(title){
   title = title.replace("\"","'")
   title = title.replace("“", "'")
   title = title.replace("”", "'")
+  title = title.replace("—", "-")
   return title
 }
 
@@ -276,7 +277,7 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
   let url = extractHostname(ogData.ogUrl)
   let title = fixTitle(ogData.ogTitle)
   outputImage = await outputImage.print(urlFont, 30, 30, url, 1020);
-  outputImage = await outputImage.print(titleFont, 30, 85, title, 1020);
+  outputImage = await outputImage.print(titleFont, 30, 85, title, 1020, 100);
 
   outputImage = outputImage.quality(90);
 
