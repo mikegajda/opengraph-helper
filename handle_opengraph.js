@@ -247,7 +247,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
       "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50/GothicA1-Regular.ttf.fnt");
 
   let url = extractHostname(ogData.ogUrl)
-  let title = fixTitle(ogData)
+  let title = fixTitle(ogData.ogTitle)
   let footerText = "Link in bio"
   outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
   outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
