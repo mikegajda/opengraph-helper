@@ -223,6 +223,15 @@ function extractHostname(url) {
   return hostname;
 }
 
+function fixTitle(title){
+  title = title.replace("’", "'")
+  title = title.replace("‘", "'")
+  title = title.replace("\"","'")
+  title = title.replace("“", "'")
+  title = title.replace("”", "'")
+  return title
+}
+
 async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
   ogImage = ogImage.cover(1080, 960);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
@@ -238,11 +247,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
       "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50/GothicA1-Regular.ttf.fnt");
 
   let url = extractHostname(ogData.ogUrl)
-  let title = ogData.ogTitle.replace("’", "'")
-  title = title.replace("‘", "'")
-  title = title.replace("\"","'")
-  title = title.replace("“", "'")
-  title = title.replace("”", "'")
+  let title = fixTitle(ogData)
   let footerText = "Link in bio"
   outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
   outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
@@ -269,7 +274,7 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
       "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt");
 
   let url = extractHostname(ogData.ogUrl)
-  let title = ogData.ogTitle.replace("’", "'")
+  let title = fixTitle(ogData.ogTitle)
   outputImage = await outputImage.print(urlFont, 30, 30, url, 1020);
   outputImage = await outputImage.print(titleFont, 30, 85, title, 1020);
 
