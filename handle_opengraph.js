@@ -11,7 +11,6 @@ const url = require('url');
 let awsKeyId = process.env.MG_AWS_KEY_ID;
 let awsSecretAccessKey = process.env.MG_AWS_SECRET_ACCESS_KEY;
 
-
 const s3 = new AWS.S3({
   accessKeyId: awsKeyId,
   secretAccessKey: awsSecretAccessKey
@@ -117,7 +116,7 @@ async function getOpenGraphInfo(url) {
 
 }
 
-async function processOgData(ogData, urlHashKey) {
+async function processOgData(ogData, urlHashKey, backgroundColor) {
   let awsResponse
 
   if (ogData.ogImage && ogData.ogImage.url) {
@@ -127,10 +126,13 @@ async function processOgData(ogData, urlHashKey) {
     }
     ogImage = ogImage.quality(90)
     let imageBufferPromise = ogImage.getBufferAsync("image/jpeg");
-    let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage);
-    let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage);
+    let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
+        backgroundColor);
+    let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage,
+        backgroundColor);
 
-    let [imageBuffer, igFeedBuffer, igStoryBuffer] = await Promise.all([imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise])
+    let [imageBuffer, igFeedBuffer, igStoryBuffer] = await Promise.all(
+        [imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise])
     console.log("got image buffers")
 
     let imageBufferAwsPromise = uploadBufferToAmazon(imageBuffer,
@@ -142,8 +144,9 @@ async function processOgData(ogData, urlHashKey) {
     let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
         `${urlHashKey}_ig_feed.jpg`);
 
-
-    let [response1, response2, response3] = await Promise.all([imageBufferAwsPromise, igStoryBufferBufferAwsPromise, igFeedBufferBufferAwsPromise])
+    let [response1, response2, response3] = await Promise.all(
+        [imageBufferAwsPromise, igStoryBufferBufferAwsPromise,
+          igFeedBufferBufferAwsPromise])
     console.log("awsResponse=", response1.Location);
     console.log("awsResponse=", response2.Location);
     console.log("awsResponse=", response3.Location);
@@ -157,13 +160,14 @@ async function processOgData(ogData, urlHashKey) {
   return ogData;
 }
 
-async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey) {
+async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
+    backgroundColor) {
 
   let ogInfo = await getOpenGraphInfo(url);
 
   if (ogInfo["success"]) {
     ogInfo["data"]["success"] = true
-    return await processOgData(ogInfo["data"], urlHashKey)
+    return await processOgData(ogInfo["data"], urlHashKey, backgroundColor)
   } else {
     return {
       success: false,
@@ -172,9 +176,9 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey) {
   }
 }
 
-async function processUrl(urlToParse, breakCache) {
+async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84') {
   let parsedUrl = url.parse(urlToParse);
-  let cleanUrl = parsedUrl.protocol +  "//" + parsedUrl.host + parsedUrl.pathname
+  let cleanUrl = parsedUrl.protocol + "//" + parsedUrl.host + parsedUrl.pathname
   console.log("cleanUrl=", cleanUrl);
   let urlHashKey = stringHash(cleanUrl);
 
@@ -186,14 +190,15 @@ async function processUrl(urlToParse, breakCache) {
       return JSON.parse(stringifiedJson)
     } catch (e) {
       console.error("Error while fetching file, will instead do a new fetch")
-      return await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl, urlHashKey)
+      return await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl, urlHashKey,
+          backgroundColor)
     }
   } else {
-    let response = await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl, urlHashKey)
+    let response = await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl,
+        urlHashKey, backgroundColor)
     return response
   }
 }
-
 
 function extractHostname(url) {
   var hostname;
@@ -218,42 +223,50 @@ function extractHostname(url) {
   return hostname;
 }
 
-async function processIgStoryImageToBuffer(ogData, ogImage) {
+async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
   ogImage = ogImage.cover(1080, 960);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
 
-  let background = await new Jimp(1080, 1920, '#01bc84')
+  let background = await new Jimp(1080, 1920, `#${backgroundColor}`)
 
   let outputImage = background.composite(ogImage, 0, 185);
 
-
   // generated with https://ttf2fnt.com/
-  let titleFont = await Jimp.loadFont("https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-85/GothicA1-SemiBold.ttf.fnt");
-  let urlFont = await Jimp.loadFont( "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50/GothicA1-Regular.ttf.fnt");
+  let titleFont = await Jimp.loadFont(
+      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-85/GothicA1-SemiBold.ttf.fnt");
+  let urlFont = await Jimp.loadFont(
+      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50/GothicA1-Regular.ttf.fnt");
 
   let url = extractHostname(ogData.ogUrl)
   let title = ogData.ogTitle.replace("’", "'")
+  title = title.replace("‘", "'")
+  title = title.replace("\"","'")
+  title = title.replace("“", "'")
+  title = title.replace("”", "'")
   let footerText = "Link in bio"
   outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
   outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
-  outputImage = await outputImage.print(urlFont, 50, 1815, {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 970);
+  outputImage = await outputImage.print(urlFont, 50, 1815,
+      {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 970);
 
   outputImage = outputImage.quality(90);
   return await outputImage.getBufferAsync("image/jpeg");
 
 }
 
-async function processIgFeedImageToBuffer(ogData, ogImage) {
+async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
   ogImage = ogImage.cover(1080, 855);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
 
-  let background = await new Jimp(1080, 1080, '#01bc84')
+  let background = await new Jimp(1080, 1080, `#${backgroundColor}`)
 
   let outputImage = background.composite(ogImage, 0, 225);
 
   // generated with https://ttf2fnt.com/
-  let titleFont = await Jimp.loadFont("https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt");
-  let urlFont = await Jimp.loadFont("https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt");
+  let titleFont = await Jimp.loadFont(
+      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt");
+  let urlFont = await Jimp.loadFont(
+      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt");
 
   let url = extractHostname(ogData.ogUrl)
   let title = ogData.ogTitle.replace("’", "'")
@@ -277,7 +290,5 @@ async function processIgFeedImageToBuffer(ogData, ogImage) {
 //     // Deal with the fact the chain failed
 //   }
 // })();
-
-
 
 module.exports.processUrl = processUrl
