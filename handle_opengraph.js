@@ -164,6 +164,12 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
     backgroundColor) {
 
   let ogInfo = await getOpenGraphInfo(url);
+  // if there is no url in the metadata, use the one that was requested from
+  if (ogInfo['data']['ogUrl'] === undefined){
+    ogInfo['data']['ogUrl'] = url
+  }
+
+  console.log("ogInfo=", ogInfo)
 
   if (ogInfo["success"]) {
     ogInfo["data"]["success"] = true
