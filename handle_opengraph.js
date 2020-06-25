@@ -268,13 +268,6 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
 }
 
 async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
-  ogImage = ogImage.cover(1080, 855);
-  // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
-
-  let background = await new Jimp(1080, 1080, `#${backgroundColor}`)
-
-  let outputImage = background.composite(ogImage, 0, 225);
-
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
       "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt");
@@ -283,12 +276,35 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
 
   let url = extractHostname(ogData.ogUrl)
   let title = fixTitle(ogData.ogTitle)
-  outputImage = await outputImage.print(urlFont, 30, 30, url, 1020);
-  let titleHeight = Jimp.measureTextHeight(titleFont, title, 1020);
-  console.log("titleHeight=", titleHeight)
-  outputImage = await outputImage.print(titleFont, 30, 85, title, 1020, 100);
 
-  outputImage = outputImage.quality(90);
+  let titleHeight = Jimp.measureTextHeight(titleFont, title, 1020);
+  let lineHeight = 63;
+  let linesCount = titleHeight/lineHeight;
+
+  console.log("titleHeight=", titleHeight)
+  console.log("linesCount=", linesCount)
+
+  // this is the maximum size of the image, calculated manually
+  let maxImageHeight = 981;
+  let imageHeight = maxImageHeight - (linesCount * lineHeight)
+  // this is the minimum y axis value, based on the number of lines, this should go up
+  // calculated this manually
+  let minImageYAxis = 99;
+  let imageYAxis = minImageYAxis + (linesCount * lineHeight)
+
+  // now generate everything
+  ogImage = ogImage.cover(1080, imageHeight);
+
+  let background = await new Jimp(1080, 1080, `#${backgroundColor}`)
+
+  let outputImage = background.composite(ogImage, 0, imageYAxis);
+
+
+  outputImage = await outputImage.print(urlFont, 30, 30, url, 1020);
+
+  outputImage = await outputImage.print(titleFont, 30, 85, title, 1020);
+
+  outputImage = outputImage.quality(95);
 
   return await outputImage.getBufferAsync("image/jpeg");
 
