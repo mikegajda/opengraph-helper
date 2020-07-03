@@ -117,7 +117,7 @@ async function getOpenGraphInfo(url) {
 
 }
 
-async function processOgData(ogData, urlHashKey, backgroundColor) {
+async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffix) {
   let awsResponse
 
   if (ogData.ogImage && ogData.ogImage.url) {
@@ -128,12 +128,16 @@ async function processOgData(ogData, urlHashKey, backgroundColor) {
     ogImage = ogImage.quality(90)
     let imageBufferPromise = ogImage.getBufferAsync("image/jpeg");
     let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
-        backgroundColor);
-    let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage,
-        backgroundColor);
+        backgroundColor, fontColorSuffix);
 
-    let [imageBuffer, igFeedBuffer, igStoryBuffer] = await Promise.all(
-        [imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise])
+    let igFeedWhiteTextBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
+        backgroundColor, '-white');
+
+    let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage,
+        backgroundColor, fontColorSuffix);
+
+    let [imageBuffer, igFeedBuffer, igFeedWhiteTextBuffer, igStoryBuffer] = await Promise.all(
+        [imageBufferPromise, igFeedBufferPromise, igFeedWhiteTextBufferPromise, igStoryBufferPromise])
     console.log("got image buffers")
 
     let imageBufferAwsPromise = uploadBufferToAmazon(imageBuffer,
@@ -145,12 +149,16 @@ async function processOgData(ogData, urlHashKey, backgroundColor) {
     let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
         `${urlHashKey}_ig_feed.jpg`);
 
-    let [response1, response2, response3] = await Promise.all(
+    let igFeedWhiteTextBufferBufferAwsPromise = uploadBufferToAmazon(igFeedWhiteTextBuffer,
+        `${urlHashKey}_ig_feed_white_text.jpg`);
+
+    let [response1, response2, response3, response4] = await Promise.all(
         [imageBufferAwsPromise, igStoryBufferBufferAwsPromise,
-          igFeedBufferBufferAwsPromise])
+          igFeedBufferBufferAwsPromise, igFeedWhiteTextBufferBufferAwsPromise])
     console.log("awsResponse=", response1.Location);
     console.log("awsResponse=", response2.Location);
     console.log("awsResponse=", response3.Location);
+    console.log("awsResponse=", response4.Location);
 
     ogData["processedImageHash"] = `${urlHashKey}.jpg`
   }
@@ -162,7 +170,7 @@ async function processOgData(ogData, urlHashKey, backgroundColor) {
 }
 
 async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
-    backgroundColor) {
+    backgroundColor, fontColorSuffix) {
 
   let ogInfo = await getOpenGraphInfo(url);
   // if there is no url in the metadata, use the one that was requested from
@@ -174,7 +182,7 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
 
   if (ogInfo["success"]) {
     ogInfo["data"]["success"] = true
-    return await processOgData(ogInfo["data"], urlHashKey, backgroundColor)
+    return await processOgData(ogInfo["data"], urlHashKey, backgroundColor, fontColorSuffix)
   } else {
     return {
       success: false,
@@ -183,7 +191,7 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
   }
 }
 
-async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84') {
+async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', fontColorSuffix = '') {
   let parsedUrl = url.parse(urlToParse);
   let cleanUrl = parsedUrl.protocol + "//" + parsedUrl.host + parsedUrl.pathname
   console.log("cleanUrl=", cleanUrl);
@@ -198,11 +206,11 @@ async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84') {
     } catch (e) {
       console.error("Error while fetching file, will instead do a new fetch")
       return await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl, urlHashKey,
-          backgroundColor)
+          backgroundColor, fontColorSuffix)
     }
   } else {
     let response = await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl,
-        urlHashKey, backgroundColor)
+        urlHashKey, backgroundColor, fontColorSuffix)
     return response
   }
 }
@@ -261,7 +269,7 @@ async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 15){
 
 }
 
-async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
+async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, fontColorSuffix) {
   ogImage = ogImage.cover(1080, 960);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
 
@@ -271,9 +279,9 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
 
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
-      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-85/GothicA1-SemiBold.ttf.fnt");
+        `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-85${fontColorSuffix}/GothicA1-SemiBold.ttf.fnt`);
   let urlFont = await Jimp.loadFont(
-      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50/GothicA1-Regular.ttf.fnt");
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50${fontColorSuffix}/GothicA1-Regular.ttf.fnt`);
 
   let url = extractHostname(ogData.ogUrl)
   let title = fixTitle(ogData.ogTitle)
@@ -288,12 +296,12 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
 
 }
 
-async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
+async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, fontColorSuffix) {
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
-      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt");
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50${fontColorSuffix}/GothicA1-SemiBold.ttf.fnt`);
   let urlFont = await Jimp.loadFont(
-      "https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt");
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32${fontColorSuffix}/GothicA1-Regular.ttf.fnt`);
 
   let url = extractHostname(ogData.ogUrl)
   let title = fixTitle(ogData.ogTitle)
