@@ -241,7 +241,7 @@ function fixTitle(title){
   return title
 }
 
-async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 10){
+async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 15){
   return new Promise((resolve, reject) => {
     fetch(`https://apidisplaypurposes.com/tag/${hashTag}`)
     .then(res => res.json())
