@@ -7,6 +7,7 @@ const AWS = require('aws-sdk');
 ogs = promisify(ogs).bind(ogs);
 let Jimp = require('jimp');
 const url = require('url');
+const fetch = require('node-fetch');
 
 let awsKeyId = process.env.MG_AWS_KEY_ID;
 let awsSecretAccessKey = process.env.MG_AWS_SECRET_ACCESS_KEY;
@@ -240,6 +241,26 @@ function fixTitle(title){
   return title
 }
 
+async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 10){
+  return new Promise((resolve, reject) => {
+    fetch(`https://apidisplaypurposes.com/tag/${hashTag}`)
+    .then(res => res.json())
+    .then(json => {
+      let results = json['results']
+      console.log("length =", results.length)
+      if (results.length < numberOfHashTagsToInclude){
+        numberOfHashTagsToInclude = results.length
+      }
+      let hashtags = ""
+      for (let i = 0; i < numberOfHashTagsToInclude; i++){
+        hashtags += `#${results[i]['tag']} `
+      }
+      resolve(hashtags)
+    })
+  })
+
+}
+
 async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor) {
   ogImage = ogImage.cover(1080, 960);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
@@ -323,3 +344,4 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
 // })();
 
 module.exports.processUrl = processUrl
+module.exports.getRelatedHashTags = getRelatedHashTags

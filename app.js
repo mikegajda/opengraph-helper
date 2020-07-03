@@ -17,6 +17,10 @@ router.get('/opengraph-info', async (req, res) => {
   res.json(response);
 });
 
+router.get('/hashtag/:hashtag', async (req, res) => {
+  let response = await handle_opengraph.getRelatedHashTags(req.params['hashtag'])
+  res.json(response);
+});
 // point the base route at the router
 app.use('/', router)
 
