@@ -17,6 +17,16 @@ router.get('/opengraph-info', async (req, res) => {
   res.json(response);
 });
 
+router.get('/create-shotstack', async (req, res) => {
+  let response = await handle_opengraph.createShotStack(req.query["url"])
+  res.json(response);
+});
+
+router.get('/get-shotstack', async (req, res) => {
+  let response = await handle_opengraph.getShotStack(req.query["url"])
+  res.json(response);
+});
+
 router.get('/hashtag/:hashtag', async (req, res) => {
   let response = await handle_opengraph.getRelatedHashTags(req.params['hashtag'])
   res.json(response);

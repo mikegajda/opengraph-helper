@@ -11,6 +11,7 @@ const fetch = require('node-fetch');
 
 let awsKeyId = process.env.MG_AWS_KEY_ID;
 let awsSecretAccessKey = process.env.MG_AWS_SECRET_ACCESS_KEY;
+let shotstackApiKey = process.env.SHOTSTACK_API_KEY;
 
 const s3 = new AWS.S3({
   accessKeyId: awsKeyId,
@@ -147,6 +148,129 @@ async function getPollySpeechBufferForText(text){
   })
 }
 
+async function postToShotStack(body){
+  // complex POST request with JSON, headers:
+  return new Promise((resolve, reject) => {
+    fetch('https://api.shotstack.io/stage/render', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': `${shotstackApiKey}`
+      },
+      body: JSON.stringify(body)
+    }).then( r => {
+      resolve( r.json());
+    })
+    .catch((error) => {
+      reject(error)
+    })
+  })
+}
+
+async function getShotStackResult(id){
+  // complex POST request with JSON, headers:
+  return new Promise((resolve, reject) => {
+    fetch(`https://api.shotstack.io/stage/render/${id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': `${shotstackApiKey}`
+      },
+    }).then( r => {
+      resolve( r.json());
+    })
+    .catch((error) => {
+      reject(error)
+    })
+  })
+}
+
+async function createShotStack(urlToParse){
+  let cleanedUrl = cleanUrl(urlToParse)
+  let urlHashKey = stringHash(cleanedUrl);
+  //
+  let stringifiedJson = await getFileInS3(`${urlHashKey}.json`)
+  let ogData = JSON.parse(stringifiedJson)
+
+  let shotStackPostBody = {
+    "timeline": {
+      "background": "#01BC84",
+      "tracks": [
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "audio",
+                "src": `https://s3.amazonaws.com/cdn.mikegajda.com/${urlHashKey}.mp3`
+              },
+              "start": 1,
+              "length": 9
+            }
+          ]
+        },
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "image",
+                "src": `https://s3.amazonaws.com/cdn.mikegajda.com/${urlHashKey}_ig_story.jpg`
+              },
+              "start": 1,
+              "length": 9,
+              "transition": {
+                "in": "reveal"
+              }
+            }
+          ]
+        },
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "image",
+                "src": `https://s3.amazonaws.com/cdn.mikegajda.com/${urlHashKey}_ig_story_without_text.jpg`
+              },
+              "start": 0,
+              "length": 5,
+              "transition": {
+                "in": "reveal"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "output": {
+      "format": "mp4",
+      "resolution": "1080",
+      "aspectRatio": "9:16"
+    }
+  }
+  let shotStackResponse = await postToShotStack(shotStackPostBody)
+  ogData['shotStackResponse'] = shotStackResponse;
+  let updatedOgDataResponse = await uploadBufferToAmazon(JSON.stringify(ogData), `${urlHashKey}.json`)
+  console.log("updatedOgDataLocation=", updatedOgDataResponse.Location);
+  return shotStackResponse
+
+}
+
+async function getShotStack(urlToParse){
+  let cleanedUrl = cleanUrl(urlToParse)
+  let urlHashKey = stringHash(cleanedUrl);
+  let stringifiedJson = await getFileInS3(`${urlHashKey}.json`)
+  let ogData = JSON.parse(stringifiedJson)
+
+  if (ogData['shotStackResponse'] && ogData['shotStackResponse']['success'] ){
+    let shotStackId = ogData['shotStackResponse']['response']['id']
+    let shotStackResponse = await getShotStackResult(shotStackId)
+    if (shotStackResponse['success']){
+      return shotStackResponse['response']['url']
+    }
+    else {
+      return shotStackResponse
+    }
+  }
+}
 async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffix) {
   let awsResponse
 
@@ -233,10 +357,15 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
   }
 }
 
-async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', fontColorSuffix = '') {
-  let parsedUrl = url.parse(urlToParse);
+function cleanUrl(urlToClean){
+  let parsedUrl = url.parse(urlToClean);
   let cleanUrl = parsedUrl.protocol + "//" + parsedUrl.host + parsedUrl.pathname
   console.log("cleanUrl=", cleanUrl);
+  return cleanUrl
+}
+
+async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', fontColorSuffix = '') {
+  let cleanUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanUrl);
 
   let existsInS3 = await checkIfFileExistsInS3(`${urlHashKey}.json`)
@@ -394,4 +523,6 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, font
 // })();
 
 module.exports.processUrl = processUrl
+module.exports.createShotStack = createShotStack
+module.exports.getShotStack = getShotStack
 module.exports.getRelatedHashTags = getRelatedHashTags
