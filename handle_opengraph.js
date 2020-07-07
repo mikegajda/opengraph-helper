@@ -17,6 +17,12 @@ const s3 = new AWS.S3({
   secretAccessKey: awsSecretAccessKey
 });
 
+let polly = new AWS.Polly({
+  accessKeyId: awsKeyId,
+  secretAccessKey: awsSecretAccessKey,
+  region: 'us-east-1'
+})
+
 svgo = new SVGO({
   multipass: true,
   floatPrecision: 0,
@@ -114,7 +120,31 @@ async function getOpenGraphInfo(url) {
       resolve(results)
     });
   })
+}
 
+async function getPollySpeechBufferForText(text){
+  return new Promise((resolve, reject) => {
+    var params = {
+      Engine: "neural",
+      LanguageCode: "en-US",
+      OutputFormat: "mp3",
+      Text: `<speak><amazon:domain name="news">${text}</amazon:domain></speak>`,
+      TextType: "ssml",
+      VoiceId: "Joanna"
+    };
+
+    polly.synthesizeSpeech(params, function(err, data) {
+      if (err) console.log(err, err.stack); // an error occurred
+      else     resolve(data.AudioStream);           // successful response
+      /*
+      data = {
+       AudioStream: <Binary String>,
+       ContentType: "audio/mpeg",
+       RequestCharacters: 37
+      }
+      */
+    });
+  })
 }
 
 async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffix) {
@@ -125,8 +155,8 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
     if (ogImage.getWidth() > 1400) {
       ogImage = ogImage.resize(1400, Jimp.AUTO);
     }
-    ogImage = ogImage.quality(90)
     let imageBufferPromise = ogImage.getBufferAsync("image/jpeg");
+    let pollyBufferPromise = getPollySpeechBufferForText(ogData.ogTitle);
     let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
         backgroundColor, fontColorSuffix);
 
@@ -134,10 +164,13 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
         backgroundColor, '-white');
 
     let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage,
-        backgroundColor, fontColorSuffix);
+        backgroundColor, fontColorSuffix, true);
 
-    let [imageBuffer, igFeedBuffer, igFeedWhiteTextBuffer, igStoryBuffer] = await Promise.all(
-        [imageBufferPromise, igFeedBufferPromise, igFeedWhiteTextBufferPromise, igStoryBufferPromise])
+    let igStoryBufferWithoutTextPromise = processIgStoryImageToBuffer(ogData, ogImage,
+        backgroundColor, fontColorSuffix, false);
+
+    let [imageBuffer, igFeedBuffer, igFeedWhiteTextBuffer, igStoryBuffer, igStoryWithoutTextBuffer, pollyBuffer] = await Promise.all(
+        [imageBufferPromise, igFeedBufferPromise, igFeedWhiteTextBufferPromise, igStoryBufferPromise, igStoryBufferWithoutTextPromise, pollyBufferPromise])
     console.log("got image buffers")
 
     let imageBufferAwsPromise = uploadBufferToAmazon(imageBuffer,
@@ -146,19 +179,27 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
     let igStoryBufferBufferAwsPromise = uploadBufferToAmazon(igStoryBuffer,
         `${urlHashKey}_ig_story.jpg`)
 
+    let igStoryBufferWithoutTextAwsPromise = uploadBufferToAmazon(igStoryWithoutTextBuffer,
+        `${urlHashKey}_ig_story_without_text.jpg`)
+
     let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
         `${urlHashKey}_ig_feed.jpg`);
 
     let igFeedWhiteTextBufferBufferAwsPromise = uploadBufferToAmazon(igFeedWhiteTextBuffer,
         `${urlHashKey}_ig_feed_white_text.jpg`);
 
-    let [response1, response2, response3, response4] = await Promise.all(
+    let pollyBufferAwsPromise = uploadBufferToAmazon(pollyBuffer,
+        `${urlHashKey}.mp3`);
+
+    let [response1, response2, response3, response4, response5, response6] = await Promise.all(
         [imageBufferAwsPromise, igStoryBufferBufferAwsPromise,
-          igFeedBufferBufferAwsPromise, igFeedWhiteTextBufferBufferAwsPromise])
+          igFeedBufferBufferAwsPromise, igFeedWhiteTextBufferBufferAwsPromise, igStoryBufferWithoutTextAwsPromise, pollyBufferAwsPromise])
     console.log("awsResponse=", response1.Location);
     console.log("awsResponse=", response2.Location);
     console.log("awsResponse=", response3.Location);
     console.log("awsResponse=", response4.Location);
+    console.log("awsResponse=", response5.Location);
+    console.log("awsResponse=", response6.Location);
 
     ogData["processedImageHash"] = `${urlHashKey}.jpg`
   }
@@ -269,7 +310,7 @@ async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 15){
 
 }
 
-async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, fontColorSuffix) {
+async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, fontColorSuffix, printText = true) {
   ogImage = ogImage.cover(1080, 960);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
 
@@ -283,15 +324,16 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, fon
   let urlFont = await Jimp.loadFont(
       `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50${fontColorSuffix}/GothicA1-Regular.ttf.fnt`);
 
-  let url = extractHostname(ogData.ogUrl)
-  let title = fixTitle(ogData.ogTitle)
-  let footerText = "Link in bio"
-  outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
-  outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
-  outputImage = await outputImage.print(urlFont, 50, 1815,
-      {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 970);
+  if (printText){
+    let url = extractHostname(ogData.ogUrl)
+    let title = fixTitle(ogData.ogTitle)
+    let footerText = "Link in bio"
+    outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
+    outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
+    outputImage = await outputImage.print(urlFont, 50, 1815,
+        {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 970);
+  }
 
-  outputImage = outputImage.quality(90);
   return await outputImage.getBufferAsync("image/jpeg");
 
 }
@@ -333,7 +375,6 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, font
 
   outputImage = await outputImage.print(titleFont, 30, 85, title, 1020);
 
-  outputImage = outputImage.quality(95);
 
   return await outputImage.getBufferAsync("image/jpeg");
 
