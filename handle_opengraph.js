@@ -242,7 +242,7 @@ async function createShotStack(urlToParse){
       "soundtrack": {
         "src": "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/Music_for_Video/Jahzzar/Tumbling_Dishes_Like_Old-Mans_Wishes/Jahzzar_-_09_-_The_Shine.mp3",
         "effect": "fadeInFadeOut",
-        "volume": 0.33
+        "volume": 0.2
       }
     },
     "output": {
@@ -370,8 +370,8 @@ function cleanUrl(urlToClean){
 }
 
 async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', fontColorSuffix = '') {
-  let cleanUrl = cleanUrl(urlToParse)
-  let urlHashKey = stringHash(cleanUrl);
+  let cleanedUrl = cleanUrl(urlToParse)
+  let urlHashKey = stringHash(cleanedUrl);
 
   let existsInS3 = await checkIfFileExistsInS3(`${urlHashKey}.json`)
   if (existsInS3 && !breakCache) {
@@ -381,11 +381,11 @@ async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', fo
       return JSON.parse(stringifiedJson)
     } catch (e) {
       console.error("Error while fetching file, will instead do a new fetch")
-      return await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl, urlHashKey,
+      return await fetchOgMetadataAndImagesAndUploadToAWS(cleanedUrl, urlHashKey,
           backgroundColor, fontColorSuffix)
     }
   } else {
-    let response = await fetchOgMetadataAndImagesAndUploadToAWS(cleanUrl,
+    let response = await fetchOgMetadataAndImagesAndUploadToAWS(cleanedUrl,
         urlHashKey, backgroundColor, fontColorSuffix)
     return response
   }
