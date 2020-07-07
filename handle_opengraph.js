@@ -123,7 +123,7 @@ async function getOpenGraphInfo(url) {
   })
 }
 
-async function getPollySpeechBufferForText(text){
+async function getPollySpeechBufferForText(text) {
   return new Promise((resolve, reject) => {
     var params = {
       Engine: "neural",
@@ -134,9 +134,13 @@ async function getPollySpeechBufferForText(text){
       VoiceId: "Joanna"
     };
 
-    polly.synthesizeSpeech(params, function(err, data) {
-      if (err) console.log(err, err.stack); // an error occurred
-      else     resolve(data.AudioStream);           // successful response
+    polly.synthesizeSpeech(params, function (err, data) {
+      if (err) {
+        console.log(err, err.stack);
+      }// an error occurred
+      else {
+        resolve(data.AudioStream);
+      }           // successful response
       /*
       data = {
        AudioStream: <Binary String>,
@@ -148,7 +152,7 @@ async function getPollySpeechBufferForText(text){
   })
 }
 
-async function postToShotStack(body){
+async function postToShotStack(body) {
   // complex POST request with JSON, headers:
   return new Promise((resolve, reject) => {
     fetch('https://api.shotstack.io/stage/render', {
@@ -158,8 +162,8 @@ async function postToShotStack(body){
         'x-api-key': `${shotstackApiKey}`
       },
       body: JSON.stringify(body)
-    }).then( r => {
-      resolve( r.json());
+    }).then(r => {
+      resolve(r.json());
     })
     .catch((error) => {
       reject(error)
@@ -167,7 +171,7 @@ async function postToShotStack(body){
   })
 }
 
-async function getShotStackResult(id){
+async function getShotStackResult(id) {
   // complex POST request with JSON, headers:
   return new Promise((resolve, reject) => {
     fetch(`https://api.shotstack.io/stage/render/${id}`, {
@@ -176,8 +180,8 @@ async function getShotStackResult(id){
         'Content-Type': 'application/json',
         'x-api-key': `${shotstackApiKey}`
       },
-    }).then( r => {
-      resolve( r.json());
+    }).then(r => {
+      resolve(r.json());
     })
     .catch((error) => {
       reject(error)
@@ -185,7 +189,19 @@ async function getShotStackResult(id){
   })
 }
 
-async function createShotStack(urlToParse){
+function getRandomMusicUrl() {
+  let urls = [
+    'https://s3.amazonaws.com/cdn.mikegajda.com/royal_free_music_public_domain_lower_volume/Arpent.mp3',
+    'https://s3.amazonaws.com/cdn.mikegajda.com/royal_free_music_public_domain_lower_volume/Chronos.mp3',
+    'https://s3.amazonaws.com/cdn.mikegajda.com/royal_free_music_public_domain_lower_volume/Desert_Fox.mp3',
+    'https://s3.amazonaws.com/cdn.mikegajda.com/royal_free_music_public_domain_lower_volume/Fireworks.mp3',
+    'https://s3.amazonaws.com/cdn.mikegajda.com/royal_free_music_public_domain_lower_volume/Guerilla_Tactics.mp3',
+    'https://s3.amazonaws.com/cdn.mikegajda.com/royal_free_music_public_domain_lower_volume/The_Drama.mp3']
+  let randomIndex = Math.floor(Math.random() * urls.length)
+  return urls[randomIndex]
+}
+
+async function createShotStack(urlToParse) {
   let cleanedUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanedUrl);
   //
@@ -240,9 +256,8 @@ async function createShotStack(urlToParse){
         }
       ],
       "soundtrack": {
-        "src": "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/Music_for_Video/Jahzzar/Tumbling_Dishes_Like_Old-Mans_Wishes/Jahzzar_-_09_-_The_Shine.mp3",
+        "src": `${getRandomMusicUrl()}`,
         "effect": "fadeInFadeOut",
-        "volume": 0.05
       }
     },
     "output": {
@@ -253,30 +268,32 @@ async function createShotStack(urlToParse){
   }
   let shotStackResponse = await postToShotStack(shotStackPostBody)
   ogData['shotStackResponse'] = shotStackResponse;
-  let updatedOgDataResponse = await uploadBufferToAmazon(JSON.stringify(ogData), `${urlHashKey}.json`)
+  let updatedOgDataResponse = await uploadBufferToAmazon(JSON.stringify(ogData),
+      `${urlHashKey}.json`)
   console.log("updatedOgDataLocation=", updatedOgDataResponse.Location);
   return shotStackResponse
 
 }
 
-async function getShotStack(urlToParse){
+async function getShotStack(urlToParse) {
   let cleanedUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanedUrl);
   let stringifiedJson = await getFileInS3(`${urlHashKey}.json`)
   let ogData = JSON.parse(stringifiedJson)
 
-  if (ogData['shotStackResponse'] && ogData['shotStackResponse']['success'] ){
+  if (ogData['shotStackResponse'] && ogData['shotStackResponse']['success']) {
     let shotStackId = ogData['shotStackResponse']['response']['id']
     let shotStackResponse = await getShotStackResult(shotStackId)
-    if (shotStackResponse['success']){
+    if (shotStackResponse['success']) {
       return shotStackResponse['response']['url']
-    }
-    else {
+    } else {
       return shotStackResponse
     }
   }
 }
-async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffix) {
+
+async function processOgData(ogData, urlHashKey, backgroundColor,
+    fontColorSuffix) {
   let awsResponse
 
   if (ogData.ogImage && ogData.ogImage.url) {
@@ -297,11 +314,13 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
     let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage,
         backgroundColor, fontColorSuffix, true);
 
-    let igStoryBufferWithoutTextPromise = processIgStoryImageToBuffer(ogData, ogImage,
+    let igStoryBufferWithoutTextPromise = processIgStoryImageToBuffer(ogData,
+        ogImage,
         backgroundColor, fontColorSuffix, false);
 
     let [imageBuffer, igFeedBuffer, igStoryBuffer, igStoryWithoutTextBuffer, pollyBuffer] = await Promise.all(
-        [imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise, igStoryBufferWithoutTextPromise, pollyBufferPromise])
+        [imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise,
+          igStoryBufferWithoutTextPromise, pollyBufferPromise])
     console.log("got image buffers")
 
     let imageBufferAwsPromise = uploadBufferToAmazon(imageBuffer,
@@ -310,7 +329,8 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
     let igStoryBufferBufferAwsPromise = uploadBufferToAmazon(igStoryBuffer,
         `${urlHashKey}_ig_story.jpg`)
 
-    let igStoryBufferWithoutTextAwsPromise = uploadBufferToAmazon(igStoryWithoutTextBuffer,
+    let igStoryBufferWithoutTextAwsPromise = uploadBufferToAmazon(
+        igStoryWithoutTextBuffer,
         `${urlHashKey}_ig_story_without_text.jpg`)
 
     let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
@@ -324,7 +344,8 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
 
     let [response1, response2, response3, response4, response5, response6] = await Promise.all(
         [imageBufferAwsPromise, igStoryBufferBufferAwsPromise,
-          igFeedBufferBufferAwsPromise, igStoryBufferWithoutTextAwsPromise, pollyBufferAwsPromise])
+          igFeedBufferBufferAwsPromise, igStoryBufferWithoutTextAwsPromise,
+          pollyBufferAwsPromise])
     console.log("awsResponse=", response1.Location);
     console.log("awsResponse=", response2.Location);
     console.log("awsResponse=", response3.Location);
@@ -345,7 +366,7 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
 
   let ogInfo = await getOpenGraphInfo(url);
   // if there is no url in the metadata, use the one that was requested from
-  if (ogInfo['data']['ogUrl'] === undefined){
+  if (ogInfo['data']['ogUrl'] === undefined) {
     ogInfo['data']['ogUrl'] = url
   }
 
@@ -353,7 +374,8 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
 
   if (ogInfo["success"]) {
     ogInfo["data"]["success"] = true
-    return await processOgData(ogInfo["data"], urlHashKey, backgroundColor, fontColorSuffix)
+    return await processOgData(ogInfo["data"], urlHashKey, backgroundColor,
+        fontColorSuffix)
   } else {
     return {
       success: false,
@@ -362,14 +384,15 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
   }
 }
 
-function cleanUrl(urlToClean){
+function cleanUrl(urlToClean) {
   let parsedUrl = url.parse(urlToClean);
   let cleanUrl = parsedUrl.protocol + "//" + parsedUrl.host + parsedUrl.pathname
   console.log("cleanUrl=", cleanUrl);
   return cleanUrl
 }
 
-async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', fontColorSuffix = '') {
+async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84',
+    fontColorSuffix = '') {
   let cleanedUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanedUrl);
 
@@ -381,7 +404,8 @@ async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', fo
       return JSON.parse(stringifiedJson)
     } catch (e) {
       console.error("Error while fetching file, will instead do a new fetch")
-      return await fetchOgMetadataAndImagesAndUploadToAWS(cleanedUrl, urlHashKey,
+      return await fetchOgMetadataAndImagesAndUploadToAWS(cleanedUrl,
+          urlHashKey,
           backgroundColor, fontColorSuffix)
     }
   } else {
@@ -414,10 +438,10 @@ function extractHostname(url) {
   return hostname;
 }
 
-function fixTitle(title){
+function fixTitle(title) {
   title = title.replace(/’/g, "'")
   title = title.replace(/‘/g, "'")
-  title = title.replace(/"/g,"'")
+  title = title.replace(/"/g, "'")
   title = title.replace(/“/g, "'")
   title = title.replace(/”/g, "'")
   title = title.replace(" — ", "-")
@@ -425,18 +449,18 @@ function fixTitle(title){
   return title
 }
 
-async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 15){
+async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 15) {
   return new Promise((resolve, reject) => {
     fetch(`https://apidisplaypurposes.com/tag/${hashTag}`)
     .then(res => res.json())
     .then(json => {
       let results = json['results']
       console.log("length =", results.length)
-      if (results.length < numberOfHashTagsToInclude){
+      if (results.length < numberOfHashTagsToInclude) {
         numberOfHashTagsToInclude = results.length
       }
       let hashtags = ""
-      for (let i = 0; i < numberOfHashTagsToInclude; i++){
+      for (let i = 0; i < numberOfHashTagsToInclude; i++) {
         hashtags += `#${results[i]['tag']} `
       }
       resolve(hashtags)
@@ -445,7 +469,8 @@ async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 15){
 
 }
 
-async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, fontColorSuffix, printText = true) {
+async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor,
+    fontColorSuffix, printText = true) {
   ogImage = ogImage.cover(1080, 960);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
 
@@ -455,11 +480,11 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, fon
 
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
-        `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-85${fontColorSuffix}/GothicA1-SemiBold.ttf.fnt`);
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-85${fontColorSuffix}/GothicA1-SemiBold.ttf.fnt`);
   let urlFont = await Jimp.loadFont(
       `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50${fontColorSuffix}/GothicA1-Regular.ttf.fnt`);
 
-  if (printText){
+  if (printText) {
     let url = extractHostname(ogData.ogUrl)
     let title = fixTitle(ogData.ogTitle)
     let footerText = "Link in bio"
@@ -473,7 +498,8 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, fon
 
 }
 
-async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, fontColorSuffix) {
+async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor,
+    fontColorSuffix) {
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
       `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50${fontColorSuffix}/GothicA1-SemiBold.ttf.fnt`);
@@ -485,7 +511,7 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, font
 
   let titleHeight = Jimp.measureTextHeight(titleFont, title, 1020);
   let lineHeight = 63;
-  let linesCount = titleHeight/lineHeight;
+  let linesCount = titleHeight / lineHeight;
 
   console.log("titleHeight=", titleHeight)
   console.log("linesCount=", linesCount)
@@ -505,11 +531,9 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, font
 
   let outputImage = background.composite(ogImage, 0, imageYAxis);
 
-
   outputImage = await outputImage.print(urlFont, 30, 30, url, 1020);
 
   outputImage = await outputImage.print(titleFont, 30, 85, title, 1020);
-
 
   return await outputImage.getBufferAsync("image/jpeg");
 
