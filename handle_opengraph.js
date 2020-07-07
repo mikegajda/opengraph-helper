@@ -155,13 +155,15 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
     if (ogImage.getWidth() > 1400) {
       ogImage = ogImage.resize(1400, Jimp.AUTO);
     }
+    ogImage = ogImage.quality(90)
+
     let imageBufferPromise = ogImage.getBufferAsync("image/jpeg");
     let pollyBufferPromise = getPollySpeechBufferForText(ogData.ogTitle);
     let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
         backgroundColor, fontColorSuffix);
-
-    let igFeedWhiteTextBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
-        backgroundColor, '-white');
+    //
+    // let igFeedWhiteTextBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
+    //     backgroundColor, '-white');
 
     let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage,
         backgroundColor, fontColorSuffix, true);
@@ -169,8 +171,8 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
     let igStoryBufferWithoutTextPromise = processIgStoryImageToBuffer(ogData, ogImage,
         backgroundColor, fontColorSuffix, false);
 
-    let [imageBuffer, igFeedBuffer, igFeedWhiteTextBuffer, igStoryBuffer, igStoryWithoutTextBuffer, pollyBuffer] = await Promise.all(
-        [imageBufferPromise, igFeedBufferPromise, igFeedWhiteTextBufferPromise, igStoryBufferPromise, igStoryBufferWithoutTextPromise, pollyBufferPromise])
+    let [imageBuffer, igFeedBuffer, igStoryBuffer, igStoryWithoutTextBuffer, pollyBuffer] = await Promise.all(
+        [imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise, igStoryBufferWithoutTextPromise, pollyBufferPromise])
     console.log("got image buffers")
 
     let imageBufferAwsPromise = uploadBufferToAmazon(imageBuffer,
@@ -185,21 +187,20 @@ async function processOgData(ogData, urlHashKey, backgroundColor, fontColorSuffi
     let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
         `${urlHashKey}_ig_feed.jpg`);
 
-    let igFeedWhiteTextBufferBufferAwsPromise = uploadBufferToAmazon(igFeedWhiteTextBuffer,
-        `${urlHashKey}_ig_feed_white_text.jpg`);
+    // let igFeedWhiteTextBufferBufferAwsPromise = uploadBufferToAmazon(igFeedWhiteTextBuffer,
+    //     `${urlHashKey}_ig_feed_white_text.jpg`);
 
     let pollyBufferAwsPromise = uploadBufferToAmazon(pollyBuffer,
         `${urlHashKey}.mp3`);
 
     let [response1, response2, response3, response4, response5, response6] = await Promise.all(
         [imageBufferAwsPromise, igStoryBufferBufferAwsPromise,
-          igFeedBufferBufferAwsPromise, igFeedWhiteTextBufferBufferAwsPromise, igStoryBufferWithoutTextAwsPromise, pollyBufferAwsPromise])
+          igFeedBufferBufferAwsPromise, igStoryBufferWithoutTextAwsPromise, pollyBufferAwsPromise])
     console.log("awsResponse=", response1.Location);
     console.log("awsResponse=", response2.Location);
     console.log("awsResponse=", response3.Location);
     console.log("awsResponse=", response4.Location);
     console.log("awsResponse=", response5.Location);
-    console.log("awsResponse=", response6.Location);
 
     ogData["processedImageHash"] = `${urlHashKey}.jpg`
   }
