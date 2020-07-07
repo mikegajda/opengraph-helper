@@ -480,7 +480,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor,
 
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
-      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-85${fontColorSuffix}/GothicA1-SemiBold.ttf.fnt`);
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-70${fontColorSuffix}/GothicA1-SemiBold.ttf.fnt`);
   let urlFont = await Jimp.loadFont(
       `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-50${fontColorSuffix}/GothicA1-Regular.ttf.fnt`);
 
@@ -488,10 +488,10 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor,
     let url = extractHostname(ogData.ogUrl)
     let title = fixTitle(ogData.ogTitle)
     let footerText = "Link in bio"
-    outputImage = await outputImage.print(urlFont, 50, 1180, url, 970);
-    outputImage = await outputImage.print(titleFont, 50, 1255, title, 970);
-    outputImage = await outputImage.print(urlFont, 50, 1815,
-        {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 970);
+    outputImage = await outputImage.print(urlFont, 80, 1180, url, 910);
+    outputImage = await outputImage.print(titleFont, 80, 1255, title, 910);
+    outputImage = await outputImage.print(urlFont, 80, 1750,
+        {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 910);
   }
 
   return await outputImage.getBufferAsync("image/jpeg");
