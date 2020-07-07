@@ -238,7 +238,12 @@ async function createShotStack(urlToParse){
             }
           ]
         }
-      ]
+      ],
+      "soundtrack": {
+        "src": "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/Music_for_Video/Jahzzar/Tumbling_Dishes_Like_Old-Mans_Wishes/Jahzzar_-_09_-_The_Shine.mp3",
+        "effect": "fadeInFadeOut",
+        "volume": 0.33
+      }
     },
     "output": {
       "format": "mp4",
