@@ -201,6 +201,69 @@ function getRandomMusicUrl() {
   return urls[randomIndex]
 }
 
+function getReactionPhotoUrl(reaction){
+  return `https://s3.amazonaws.com/cdn.mikegajda.com/dever_reactions/${reaction}.png`
+}
+
+async function createReactionBaseImage(baseImage){
+
+  return await baseImage.getBufferAsync("image/jpeg");
+
+}
+
+async function createReactionWithSpeechBubble(baseImage, reactionText){
+  let speechBubbleUrl = 'https://s3.amazonaws.com/cdn.mikegajda.com/dever_reaction_story_assets/speech_bubble.png'
+
+  let speechBubbleImage = await Jimp.read(speechBubbleUrl)
+
+  baseImage = baseImage.composite(speechBubbleImage, 90, 1040);
+
+  let textFont = await Jimp.loadFont(
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-40/GothicA1-Regular.ttf.fnt`);
+
+  baseImage = await baseImage.print(textFont, 135, 1115, reactionText, 800);
+
+  return await baseImage.getBufferAsync("image/jpeg");
+
+}
+async function processReaction(urlToParse, reaction, reactionText){
+  let cleanedUrl = cleanUrl(urlToParse)
+  let urlHashKey = stringHash(cleanedUrl);
+
+  let backgroundImageUrl = 'https://s3.amazonaws.com/cdn.mikegajda.com/dever_reaction_story_assets/background_gradient.png'
+  let backgroundImage = await Jimp.read(backgroundImageUrl)
+  backgroundImage = backgroundImage.resize(1080, 1920)
+
+  let reactionImage = await Jimp.read(getReactionPhotoUrl(reaction))
+
+  let igFeedImageUrl = `https://s3.amazonaws.com/cdn.mikegajda.com/${urlHashKey}_ig_feed.jpg`
+  let igFeedImage = await Jimp.read(igFeedImageUrl)
+  igFeedImage = igFeedImage.resize(729, 729)
+
+  let baseImage = backgroundImage.composite(igFeedImage, 175, 185);
+  baseImage = baseImage.composite(reactionImage, 336, 705);
+
+
+  let reactionBaseImageBufferPromise = createReactionBaseImage(baseImage);
+  let reactionTest = "Nam quis nulla. Integer malesuada. In in enim a arcu imperdiet malesuada. Sed vel lectus. Donec odio urna, tempus molestie, porttitor ut, iaculis quis, sem. Phasellus rhoncus. Aenean id metus id velit ullamcorper pulvinar. Vestibulum fermen"
+  let reactionImageWithSpeechBubbleBufferPromise = createReactionWithSpeechBubble(baseImage, reactionTest);
+
+  let [reactionBaseImageBuffer, reactionImageWithSpeechBubbleBuffer] = await Promise.all(
+      [reactionBaseImageBufferPromise, reactionImageWithSpeechBubbleBufferPromise])
+  console.log("got image buffers")
+
+  let reactionBaseImageBufferAwsPromise = uploadBufferToAmazon(reactionBaseImageBuffer,
+      `${urlHashKey}_reaction_base.jpg`);
+
+  let reactionImageWithSpeechBubbleBufferAwsPromise = uploadBufferToAmazon(reactionImageWithSpeechBubbleBuffer,
+      `${urlHashKey}_reaction_with_speech_bubble.jpg`);
+
+  let [response1, response2, response3, response4, response5, response6] = await Promise.all(
+      [reactionBaseImageBufferAwsPromise, reactionImageWithSpeechBubbleBufferAwsPromise])
+  console.log("awsResponse=", response1.Location);
+  console.log("awsResponse=", response2.Location);
+}
+
 async function createShotStack(urlToParse) {
   let cleanedUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanedUrl);
@@ -554,4 +617,5 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor,
 module.exports.processUrl = processUrl
 module.exports.createShotStack = createShotStack
 module.exports.getShotStack = getShotStack
+module.exports.processReaction = processReaction
 module.exports.getRelatedHashTags = getRelatedHashTags
