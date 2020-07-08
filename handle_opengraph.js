@@ -262,6 +262,10 @@ async function processReaction(urlToParse, reaction, reactionText){
       [reactionBaseImageBufferAwsPromise, reactionImageWithSpeechBubbleBufferAwsPromise])
   console.log("awsResponse=", response1.Location);
   console.log("awsResponse=", response2.Location);
+  return {
+    "reactionBaseImageUrl": response1.Location,
+    "reactionWithSpeechBubbleUrl": response2.Location,
+  }
 }
 
 async function createShotStack(urlToParse) {

@@ -29,7 +29,7 @@ router.get('/get-shotstack', async (req, res) => {
 
 router.get('/process-reaction', async (req, res) => {
   let response = await handle_opengraph.processReaction(req.query["url"], req.query["reaction"])
-  res.json({"status": "done"});
+  res.json(response);
 });
 
 router.get('/hashtag/:hashtag', async (req, res) => {
