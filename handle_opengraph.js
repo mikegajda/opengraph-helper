@@ -219,7 +219,7 @@ async function createReactionWithSpeechBubble(baseImage, reactionText){
   baseImage = baseImage.composite(speechBubbleImage, 90, 1040);
 
   let textFont = await Jimp.loadFont(
-      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-40/GothicA1-Regular.ttf.fnt`);
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Medium-40/GothicA1-Medium.ttf.fnt`);
 
   baseImage = await baseImage.print(textFont, 135, 1115, reactionText, 800);
 
