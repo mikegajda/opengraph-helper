@@ -123,15 +123,15 @@ async function getOpenGraphInfo(url) {
   })
 }
 
-async function getPollySpeechBufferForText(text) {
+async function getPollySpeechBufferForText(text, voiceId = 'Joanna', shouldUseNewsCaster = true) {
   return new Promise((resolve, reject) => {
     var params = {
       Engine: "neural",
       LanguageCode: "en-US",
       OutputFormat: "mp3",
-      Text: `<speak><amazon:domain name="news">${text}</amazon:domain></speak>`,
+      Text: shouldUseNewsCaster ? `<speak><amazon:domain name="news">${text}</amazon:domain></speak>`: `<speak><prosody rate="130%">${text}</prosody></speak>`,
       TextType: "ssml",
-      VoiceId: "Joanna"
+      VoiceId: voiceId
     };
 
     polly.synthesizeSpeech(params, function (err, data) {
@@ -149,8 +149,7 @@ async function getPollySpeechBufferForText(text) {
       }
       */
     });
-  })
-}
+  })}
 
 async function postToShotStack(body) {
   // complex POST request with JSON, headers:
@@ -221,6 +220,7 @@ async function createReactionWithSpeechBubble(baseImage, reactionText){
   let textFont = await Jimp.loadFont(
       `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Medium-40/GothicA1-Medium.ttf.fnt`);
 
+  reactionText = fixTitle(reactionText)
   baseImage = await baseImage.print(textFont, 135, 1115, reactionText, 800);
 
   return await baseImage.getBufferAsync("image/jpeg");
@@ -229,6 +229,9 @@ async function createReactionWithSpeechBubble(baseImage, reactionText){
 async function processReaction(urlToParse, reaction, reactionText){
   let cleanedUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanedUrl);
+
+  let stringifiedJson = await getFileInS3(`${urlHashKey}.json`)
+  let ogData = JSON.parse(stringifiedJson)
 
   let backgroundImageUrl = 'https://s3.amazonaws.com/cdn.mikegajda.com/dever_reaction_story_assets/background_gradient.png'
   let backgroundImage = await Jimp.read(backgroundImageUrl)
@@ -245,11 +248,13 @@ async function processReaction(urlToParse, reaction, reactionText){
 
 
   let reactionBaseImageBufferPromise = createReactionBaseImage(baseImage);
-  let reactionTest = "Nam quis nulla. Integer malesuada. In in enim a arcu imperdiet malesuada. Sed vel lectus. Donec odio urna, tempus molestie, porttitor ut, iaculis quis, sem. Phasellus rhoncus. Aenean id metus id velit ullamcorper pulvinar. Vestibulum fermen"
-  let reactionImageWithSpeechBubbleBufferPromise = createReactionWithSpeechBubble(baseImage, reactionTest);
+  let reactionImageWithSpeechBubbleBufferPromise = createReactionWithSpeechBubble(baseImage, reactionText);
 
-  let [reactionBaseImageBuffer, reactionImageWithSpeechBubbleBuffer] = await Promise.all(
-      [reactionBaseImageBufferPromise, reactionImageWithSpeechBubbleBufferPromise])
+  let pollyBufferPromise = getPollySpeechBufferForText(reactionText, "Joey", false);
+
+
+  let [reactionBaseImageBuffer, reactionImageWithSpeechBubbleBuffer, pollyBuffer] = await Promise.all(
+      [reactionBaseImageBufferPromise, reactionImageWithSpeechBubbleBufferPromise, pollyBufferPromise])
   console.log("got image buffers")
 
   let reactionBaseImageBufferAwsPromise = uploadBufferToAmazon(reactionBaseImageBuffer,
@@ -258,14 +263,78 @@ async function processReaction(urlToParse, reaction, reactionText){
   let reactionImageWithSpeechBubbleBufferAwsPromise = uploadBufferToAmazon(reactionImageWithSpeechBubbleBuffer,
       `${urlHashKey}_reaction_with_speech_bubble.jpg`);
 
+  let pollyBufferAwsPromise = uploadBufferToAmazon(pollyBuffer,
+      `${urlHashKey}_reaction.mp3`);
+
   let [response1, response2, response3, response4, response5, response6] = await Promise.all(
-      [reactionBaseImageBufferAwsPromise, reactionImageWithSpeechBubbleBufferAwsPromise])
+      [reactionBaseImageBufferAwsPromise, reactionImageWithSpeechBubbleBufferAwsPromise, pollyBufferAwsPromise])
   console.log("awsResponse=", response1.Location);
   console.log("awsResponse=", response2.Location);
-  return {
-    "reactionBaseImageUrl": response1.Location,
-    "reactionWithSpeechBubbleUrl": response2.Location,
+  console.log("awsResponse=", response3.Location);
+
+  let shotStackPostBody = {
+    "timeline": {
+      "background": "#01BC84",
+      "tracks": [
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "audio",
+                "src": `https://s3.amazonaws.com/cdn.mikegajda.com/${urlHashKey}_reaction.mp3`
+              },
+              "start": 0,
+              "length": 15
+            }
+          ]
+        },
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "image",
+                "src": `https://s3.amazonaws.com/cdn.mikegajda.com/${urlHashKey}_reaction_with_speech_bubble.jpg`
+              },
+              "start": 1,
+              "length": 14,
+              "transition": {
+                "in": "reveal"
+              }
+            }
+          ]
+        },
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "image",
+                "src": `https://s3.amazonaws.com/cdn.mikegajda.com/${urlHashKey}_reaction_base.jpg`
+              },
+              "start": 0,
+              "length": 5,
+              "transition": {
+                "in": "reveal"
+              }
+            }
+          ]
+        }
+      ],
+      "soundtrack": {
+        "src": `${getRandomMusicUrl()}`,
+        "effect": "fadeInFadeOut",
+      }
+    },
+    "output": {
+      "format": "mp4",
+      "resolution": "1080",
+      "aspectRatio": "9:16"
+    }
   }
+  let shotStackResponse = await postToShotStack(shotStackPostBody)
+  ogData['reactionShotStackResponse'] = shotStackResponse;
+  let updatedOgDataResponse = await uploadBufferToAmazon(JSON.stringify(ogData),
+      `${urlHashKey}.json`)
+  return shotStackResponse
 }
 
 async function createShotStack(urlToParse) {
@@ -342,14 +411,23 @@ async function createShotStack(urlToParse) {
 
 }
 
-async function getShotStack(urlToParse) {
+async function getShotStack(urlToParse, type = 'Regular') {
   let cleanedUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanedUrl);
   let stringifiedJson = await getFileInS3(`${urlHashKey}.json`)
   let ogData = JSON.parse(stringifiedJson)
 
-  if (ogData['shotStackResponse'] && ogData['shotStackResponse']['success']) {
+  if (type === 'Regular' && ogData['shotStackResponse'] && ogData['shotStackResponse']['success']) {
     let shotStackId = ogData['shotStackResponse']['response']['id']
+    let shotStackResponse = await getShotStackResult(shotStackId)
+    if (shotStackResponse['success']) {
+      return shotStackResponse['response']['url']
+    } else {
+      return shotStackResponse
+    }
+  }
+  else if (type === 'Reaction' && ogData['reactionShotStackResponse'] && ogData['reactionShotStackResponse']['success']){
+    let shotStackId = ogData['reactionShotStackResponse']['response']['id']
     let shotStackResponse = await getShotStackResult(shotStackId)
     if (shotStackResponse['success']) {
       return shotStackResponse['response']['url']

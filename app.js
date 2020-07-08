@@ -23,12 +23,17 @@ router.get('/create-shotstack', async (req, res) => {
 });
 
 router.get('/get-shotstack', async (req, res) => {
-  let response = await handle_opengraph.getShotStack(req.query["url"])
+  let response = await handle_opengraph.getShotStack(req.query["url"], req.query['type'])
   res.json(response);
 });
 
 router.get('/process-reaction', async (req, res) => {
   let response = await handle_opengraph.processReaction(req.query["url"], req.query["reaction"])
+  res.json(response);
+});
+
+router.post('/process-reaction', async (req, res) => {
+  let response = await handle_opengraph.processReaction(req.body['url'], req.body['reaction'], req.body['reactionText'])
   res.json(response);
 });
 
