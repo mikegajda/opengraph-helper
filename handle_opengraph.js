@@ -632,11 +632,8 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor,
   if (printText) {
     let url = extractHostname(ogData.ogUrl)
     let title = fixTitle(ogData.ogTitle)
-    let footerText = "Link in bio"
     outputImage = await outputImage.print(urlFont, 80, 1180, url, 910);
     outputImage = await outputImage.print(titleFont, 80, 1255, title, 910);
-    outputImage = await outputImage.print(urlFont, 80, 1750,
-        {text: footerText, alignmentX: Jimp.HORIZONTAL_ALIGN_CENTER}, 910);
   }
 
   return await outputImage.getBufferAsync("image/jpeg");
