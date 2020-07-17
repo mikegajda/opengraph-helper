@@ -443,15 +443,15 @@ async function processOgData(ogData, urlHashKey, backgroundColor,
 
   if (ogData.ogImage && ogData.ogImage.url) {
     let ogImage = await Jimp.read(ogData.ogImage.url)
-    if (ogImage.getWidth() > 1400) {
-      ogImage = ogImage.resize(1400, Jimp.AUTO);
+    if (ogImage.getWidth() > 1080) {
+      ogImage = ogImage.resize(1080, Jimp.AUTO);
     }
-    ogImage = ogImage.quality(90)
+    ogImage = ogImage.quality(85)
 
     let imageBufferPromise = ogImage.getBufferAsync("image/jpeg");
     let pollyBufferPromise = getPollySpeechBufferForText(ogData.ogTitle);
     let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
-        backgroundColor);
+        backgroundColor, reaction);
     //
     // let igFeedWhiteTextBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
     //     backgroundColor, '-white');
@@ -656,7 +656,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, rea
 
 }
 
-async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
+async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, reaction) {
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
       `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt`);
@@ -674,7 +674,7 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
   console.log("linesCount=", linesCount)
 
   // this is the maximum size of the image, calculated manually
-  let maxImageHeight = 981;
+  let maxImageHeight = 943;
   let imageHeight = maxImageHeight - (linesCount * lineHeight)
   // this is the minimum y axis value, based on the number of lines, this should go up
   // calculated this manually
@@ -682,15 +682,25 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor) {
   let imageYAxis = minImageYAxis + (linesCount * lineHeight)
 
   // now generate everything
-  ogImage = ogImage.cover(1080, imageHeight);
+  ogImage = ogImage.cover(1016, imageHeight);
 
   let background = await new Jimp(1080, 1080, `#${backgroundColor}`)
 
-  let outputImage = background.composite(ogImage, 0, imageYAxis);
+  let outputImage = background.composite(ogImage, 32, imageYAxis);
 
-  outputImage = await outputImage.print(urlFont, 30, 30, url, 1020);
+  if (reaction !== ''){
+    console.log('reaction=', reaction)
+    let reactionImage = await Jimp.read(getReactionPhotoUrl(reaction))
+    reactionImage = reactionImage.resize(235, 235)
+    outputImage = outputImage.composite(reactionImage, 422, imageYAxis - 100)
+  }
 
-  outputImage = await outputImage.print(titleFont, 30, 85, title, 1020);
+
+  outputImage = await outputImage.print(titleFont, 30, 30, title, 1020);
+  // here, the y value is just slightly less than 30 + titleHeight on purpose, so that
+  // the url looks more attached to the title
+  outputImage = await outputImage.print(urlFont, 30, 22 + titleHeight, url, 1020);
+
 
   return await outputImage.getBufferAsync("image/jpeg");
 
