@@ -278,7 +278,7 @@ async function processDeverReaction(reaction){
   let speechBubble = await Jimp.read(speechBubbleImageUrl)
 
   let reactionImage = await Jimp.read(getReactionPhotoUrl(reaction))
-  baseImage = baseImage.composite(reactionImage, 0, 0)
+  baseImage = baseImage.composite(reactionImage, 0, 15)
   baseImage = baseImage.composite(speechBubble, 173, 37)
 
   let textFont = await Jimp.loadFont(
