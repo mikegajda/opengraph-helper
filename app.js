@@ -13,7 +13,7 @@ app.use(cors({
 
 const router = express.Router()
 router.get('/opengraph-info', async (req, res) => {
-  let response = await handle_opengraph.processUrl(req.query["url"], req.query["breakCache"] === "true", req.query["backgroundColor"], req.query["reaction"])
+  let response = await handle_opengraph.processUrl(req.query["url"], req.query["breakCache"] === "true", req.query["backgroundColor"], req.query["includeReaction"] === "true", req.query["reaction"])
   res.json(response);
 });
 

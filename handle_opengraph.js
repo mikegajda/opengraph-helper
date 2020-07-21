@@ -99,7 +99,10 @@ function getDeverReactionText(reaction){
   let reactionText = ""
   switch (reaction) {
     case "angry":
-      reactionText = "I’m so angry about this. Do you feel the same way? Tag someone who would also feel angry."
+      reactionText = "I'm so angry about this. Do you feel the same way? Tag someone who would also feel angry."
+      break
+    case "bored":
+      reactionText = "I'm bored by this one. Do you feel the same way? Comment to tell me what you think."
       break
     case "claps":
       reactionText = "Claps! How do you feel about this one? Tag a friend that would clap along with you."
@@ -111,7 +114,7 @@ function getDeverReactionText(reaction){
       reactionText = "I do not like this at all. Care to tell me your thoughts on this one?"
       break
     case "happy_smile":
-      reactionText = "I’m happy about this one! Are you also happy? Make someone’s day by tagging them below!"
+      reactionText = "I'm happy about this one! Are you also happy? Make someone's day by tagging them below!"
       break
     case "happy_stars":
       reactionText = "I really like this! Do you agree? Tell me your thoughts by commenting or tagging a friend."
@@ -123,19 +126,16 @@ function getDeverReactionText(reaction){
       reactionText = "I like this a lot! Do you agree? Tell me your thoughts and tag a friend that you think would agree."
       break
     case "love":
-      reactionText = "I love this one. Tag someone who would also love this one and comment why you’re tagging them!"
+      reactionText = "I love this one. Tag someone who would also love this it and comment why you're tagging them!"
       break
     case "mind_blown":
-      reactionText = "I’m mind blown! Agree? Disagree? Tell me what you think, or tag someone you think would be mind blown."
+      reactionText = "I'm mind blown! Agree? Disagree? Tell me what you think, or tag someone you think would be mind blown."
       break
     case "sad":
-      reactionText = "I’m really saddened by this. Are you as well? Tell me why you’re sad about this."
-      break
-    case "bored":
-      reactionText = "I’m bored by this one. Do you feel the same way? Comment to tell me what you think."
+      reactionText = "I'm really saddened by this. Are you as well? Tell me why you're sad about this."
       break
     case "surprised":
-      reactionText = "I’m surprised by this one. How do you feel? Tag a friend who you think should read this."
+      reactionText = "I'm surprised by this one. How do you feel? Tag a friend who you think should read this."
       break
     default:
       reactionText = "I'm not sure what I think about this one. What do you think? Tell me and we can have a discussion."
@@ -247,7 +247,7 @@ function getRandomMusicUrl() {
 }
 
 function getReactionPhotoUrl(reaction){
-  return `https://s3.amazonaws.com/cdn.mikegajda.com/dever_reactions/${reaction}.png`
+  return `https://s3.amazonaws.com/cdn.mikegajda.com/dever_reaction_smaller/${reaction}.png`
 }
 
 async function createReactionBaseImage(baseImage){
@@ -270,6 +270,24 @@ async function createReactionWithSpeechBubble(baseImage, reactionText){
   baseImage = await baseImage.print(textFont, 135, 1115, reactionText, 800);
 
   return await baseImage.getBufferAsync("image/jpeg");
+
+}
+async function processDeverReaction(reaction){
+  let baseImage = await new Jimp(820, 185)
+  let speechBubbleImageUrl = 'https://s3.amazonaws.com/cdn.mikegajda.com/dever_reaction_smaller/dever_speech_bubble_new.png'
+  let speechBubble = await Jimp.read(speechBubbleImageUrl)
+
+  let reactionImage = await Jimp.read(getReactionPhotoUrl(reaction))
+  baseImage = baseImage.composite(reactionImage, 0, 0)
+  baseImage = baseImage.composite(speechBubble, 173, 37)
+
+  let textFont = await Jimp.loadFont(
+      `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt`);
+
+  let reactionText = fixTitle(getDeverReactionText(reaction))
+  baseImage = await baseImage.print(textFont, 215, 48, reactionText, 590);
+
+  return baseImage
 
 }
 async function processReaction(urlToParse, reaction, reactionText){
@@ -483,7 +501,7 @@ async function getShotStack(urlToParse, type = 'Regular') {
   }
 }
 
-async function processOgData(ogData, urlHashKey, backgroundColor,
+async function processOgData(ogData, urlHashKey, backgroundColor, includeReaction,
     reaction) {
   let awsResponse
 
@@ -495,19 +513,24 @@ async function processOgData(ogData, urlHashKey, backgroundColor,
     ogImage = ogImage.quality(85)
 
     let imageBufferPromise = ogImage.getBufferAsync("image/jpeg");
+
+    let reactionImage
+    if (includeReaction){
+      reactionImage = await processDeverReaction(reaction)
+    }
     let pollyBufferPromise = getPollySpeechBufferForText(ogData.ogTitle);
     let igFeedBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
-        backgroundColor, reaction);
+        backgroundColor, includeReaction, reactionImage);
     //
     // let igFeedWhiteTextBufferPromise = processIgFeedImageToBuffer(ogData, ogImage,
     //     backgroundColor, '-white');
 
     let igStoryBufferPromise = processIgStoryImageToBuffer(ogData, ogImage,
-        backgroundColor,  reaction, true);
+        backgroundColor,  includeReaction, reactionImage, true);
 
     let igStoryBufferWithoutTextPromise = processIgStoryImageToBuffer(ogData,
         ogImage,
-        backgroundColor, reaction, false);
+        backgroundColor, false, reactionImage, true);
 
     let [imageBuffer, igFeedBuffer, igStoryBuffer, igStoryWithoutTextBuffer, pollyBuffer] = await Promise.all(
         [imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise,
@@ -526,6 +549,7 @@ async function processOgData(ogData, urlHashKey, backgroundColor,
 
     let igFeedBufferBufferAwsPromise = uploadBufferToAmazon(igFeedBuffer,
         `${urlHashKey}_ig_feed.jpg`);
+
 
     // let igFeedWhiteTextBufferBufferAwsPromise = uploadBufferToAmazon(igFeedWhiteTextBuffer,
     //     `${urlHashKey}_ig_feed_white_text.jpg`);
@@ -553,7 +577,7 @@ async function processOgData(ogData, urlHashKey, backgroundColor,
 }
 
 async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
-    backgroundColor, reaction) {
+    backgroundColor, includeReaction, reaction) {
 
   let ogInfo = await getOpenGraphInfo(url);
   // if there is no url in the metadata, use the one that was requested from
@@ -565,7 +589,7 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
 
   if (ogInfo["success"]) {
     ogInfo["data"]["success"] = true
-    return await processOgData(ogInfo["data"], urlHashKey, backgroundColor, reaction)
+    return await processOgData(ogInfo["data"], urlHashKey, backgroundColor, includeReaction, reaction)
   } else {
     return {
       success: false,
@@ -581,7 +605,7 @@ function cleanUrl(urlToClean) {
   return cleanUrl
 }
 
-async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', reaction = '') {
+async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', includeReaction = true, reaction = '') {
   let cleanedUrl = cleanUrl(urlToParse)
   let urlHashKey = stringHash(cleanedUrl);
 
@@ -595,11 +619,11 @@ async function processUrl(urlToParse, breakCache, backgroundColor = '01bc84', re
       console.error("Error while fetching file, will instead do a new fetch")
       return await fetchOgMetadataAndImagesAndUploadToAWS(cleanedUrl,
           urlHashKey,
-          backgroundColor, reaction)
+          backgroundColor, includeReaction, reaction)
     }
   } else {
     let response = await fetchOgMetadataAndImagesAndUploadToAWS(cleanedUrl,
-        urlHashKey, backgroundColor, reaction)
+        urlHashKey, backgroundColor, includeReaction, reaction)
     return response
   }
 }
@@ -658,20 +682,22 @@ async function getRelatedHashTags(hashTag, numberOfHashTagsToInclude = 15) {
 
 }
 
-async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, reaction, printText = true ) {
+async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, includeReaction, reactionImage, printText = true ) {
   ogImage = ogImage.cover(1080, 680);
   // let imageBuffer = await ogImage.getBufferAsync("image/jpeg");
 
   let background = await new Jimp(1080, 1920, `#${backgroundColor}`)
 
-  let outputImage = background.composite(ogImage, 0, 790);
+  let outputImage = background.composite(ogImage, 0, 630);
 
-
+  if (includeReaction){
+    outputImage = outputImage.composite(reactionImage, 67, 1300)
+  }
 
   if (printText) {
     // generated with https://ttf2fnt.com/
     let titleFont = await Jimp.loadFont(
-        `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-70/GothicA1-SemiBold.ttf.fnt`);
+        `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-60/GothicA1-SemiBold.ttf.fnt`);
     let urlFont = await Jimp.loadFont(
         `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt`);
 
@@ -679,22 +705,16 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, rea
     let url = extractHostname(ogData.ogUrl)
     let title = fixTitle(ogData.ogTitle)
 
-    if (reaction !== ''){
-      console.log('reaction=', reaction)
-      let reactionImage = await Jimp.read(getReactionPhotoUrl(reaction))
-      reactionImage = reactionImage.resize(310, 310)
-      outputImage = outputImage.composite(reactionImage, 385, 665)
-    }
-
     let maxWidth = 910
     let titleHeight = Jimp.measureTextHeight(titleFont, title, maxWidth);
-    let lineHeight = 88
+    let lineHeight = 75
     let lines = titleHeight / lineHeight
 
-    let titleMaxY = 685
+    let titleMaxY = 585
     let titleY = titleMaxY - titleHeight
-    console.log("titleHeight", titleHeight)
-    outputImage = await outputImage.print(urlFont, 80, 685, url, maxWidth);
+    console.log("igStory titleHeight", titleHeight)
+    console.log("igStory lineCount", lines)
+    outputImage = await outputImage.print(urlFont, 80, 580, url, maxWidth);
     outputImage = await outputImage.print(titleFont, 80, titleY, title, maxWidth);
   }
 
@@ -702,7 +722,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, rea
 
 }
 
-async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, reaction) {
+async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, includeReaction, reactionImage) {
   // generated with https://ttf2fnt.com/
   let titleFont = await Jimp.loadFont(
       `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-SemiBold-50/GothicA1-SemiBold.ttf.fnt`);
@@ -720,25 +740,26 @@ async function processIgFeedImageToBuffer(ogData, ogImage, backgroundColor, reac
   console.log("linesCount=", linesCount)
 
   // this is the maximum size of the image, calculated manually
-  let maxImageHeight = 943;
+  let maxImageHeight = 819;
+  // image should be larger if we don't have a reaction
+  if (!includeReaction){
+    maxImageHeight += 135
+  }
   let imageHeight = maxImageHeight - (linesCount * lineHeight)
   // this is the minimum y axis value, based on the number of lines, this should go up
   // calculated this manually
-  let minImageYAxis = 99;
+  let minImageYAxis = 82;
   let imageYAxis = minImageYAxis + (linesCount * lineHeight)
 
   // now generate everything
-  ogImage = ogImage.cover(1016, imageHeight);
+  ogImage = ogImage.cover(1080, imageHeight);
 
   let background = await new Jimp(1080, 1080, `#${backgroundColor}`)
 
-  let outputImage = background.composite(ogImage, 32, imageYAxis);
+  let outputImage = background.composite(ogImage, 0, imageYAxis);
 
-  if (reaction !== ''){
-    console.log('reaction=', reaction)
-    let reactionImage = await Jimp.read(getReactionPhotoUrl(reaction))
-    reactionImage = reactionImage.resize(235, 235)
-    outputImage = outputImage.composite(reactionImage, 422, imageYAxis - 100)
+  if (includeReaction){
+    outputImage = outputImage.composite(reactionImage, 130, 887)
   }
 
 
