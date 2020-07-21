@@ -95,7 +95,53 @@ async function checkIfFileExistsInS3(filename) {
     });
   })
 }
-
+function getDeverReactionText(reaction){
+  let reactionText = ""
+  switch (reaction) {
+    case "angry":
+      reactionText = "I’m so angry about this. Do you feel the same way? Tag someone who would also feel angry."
+      break
+    case "claps":
+      reactionText = "Claps! How do you feel about this one? Tag a friend that would clap along with you."
+      break
+    case "curse":
+      reactionText = "I want to curse out loud about this one. What words come to mind for you when you see this headline?"
+      break
+    case "dislike":
+      reactionText = "I do not like this at all. Care to tell me your thoughts on this one?"
+      break
+    case "happy_smile":
+      reactionText = "I’m happy about this one! Are you also happy? Make someone’s day by tagging them below!"
+      break
+    case "happy_stars":
+      reactionText = "I really like this! Do you agree? Tell me your thoughts by commenting or tagging a friend."
+      break
+    case "laugh_crying":
+      reactionText = "I laughed about this one. What was your reaction when you read this?"
+      break
+    case "like":
+      reactionText = "I like this a lot! Do you agree? Tell me your thoughts and tag a friend that you think would agree."
+      break
+    case "love":
+      reactionText = "I love this one. Tag someone who would also love this one and comment why you’re tagging them!"
+      break
+    case "mind_blown":
+      reactionText = "I’m mind blown! Agree? Disagree? Tell me what you think, or tag someone you think would be mind blown."
+      break
+    case "sad":
+      reactionText = "I’m really saddened by this. Are you as well? Tell me why you’re sad about this."
+      break
+    case "bored":
+      reactionText = "I’m bored by this one. Do you feel the same way? Comment to tell me what you think."
+      break
+    case "surprised":
+      reactionText = "I’m surprised by this one. How do you feel? Tag a friend who you think should read this."
+      break
+    default:
+      reactionText = "I'm not sure what I think about this one. What do you think? Tell me and we can have a discussion."
+  }
+  return reactionText;
+}
 async function getFileInS3(filename) {
   const params = {
     Bucket: "cdn.mikegajda.com",
