@@ -585,7 +585,7 @@ async function fetchOgMetadataAndImagesAndUploadToAWS(url, urlHashKey,
     ogInfo['data']['ogUrl'] = url
   }
 
-  console.log("ogInfo=", ogInfo)
+  console.log("ogInfo=", JSON.stringify(ogInfo))
 
   if (ogInfo["success"]) {
     ogInfo["data"]["success"] = true
@@ -688,10 +688,10 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, inc
 
   let background = await new Jimp(1080, 1920, `#${backgroundColor}`)
 
-  let outputImage = background.composite(ogImage, 0, 630);
+  let outputImage = background.composite(ogImage, 0, 645);
 
   if (includeReaction){
-    outputImage = outputImage.composite(reactionImage, 67, 1300)
+    outputImage = outputImage.composite(reactionImage, 67, 1315)
   }
 
   if (printText) {
@@ -710,11 +710,11 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, inc
     let lineHeight = 75
     let lines = titleHeight / lineHeight
 
-    let titleMaxY = 585
+    let titleMaxY = 600
     let titleY = titleMaxY - titleHeight
     console.log("igStory titleHeight", titleHeight)
     console.log("igStory lineCount", lines)
-    outputImage = await outputImage.print(urlFont, 80, 580, url, maxWidth);
+    outputImage = await outputImage.print(urlFont, 80, 595, url, maxWidth);
     outputImage = await outputImage.print(titleFont, 80, titleY, title, maxWidth);
   }
 
