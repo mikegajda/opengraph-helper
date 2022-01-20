@@ -530,7 +530,7 @@ async function processOgData(ogData, urlHashKey, backgroundColor, includeReactio
 
     let igStoryBufferWithoutTextPromise = processIgStoryImageToBuffer(ogData,
         ogImage,
-        backgroundColor, false, reactionImage, true);
+        backgroundColor, false, reactionImage, false);
 
     let [imageBuffer, igFeedBuffer, igStoryBuffer, igStoryWithoutTextBuffer, pollyBuffer] = await Promise.all(
         [imageBufferPromise, igFeedBufferPromise, igStoryBufferPromise,
@@ -688,10 +688,10 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, inc
 
   let background = await new Jimp(1080, 1920, `#${backgroundColor}`)
 
-  let outputImage = background.composite(ogImage, 0, 645);
+  let outputImage = background.composite(ogImage, 0, 345);
 
   if (includeReaction){
-    outputImage = outputImage.composite(reactionImage, 67, 1315)
+    outputImage = outputImage.composite(reactionImage, 67, 1015)
   }
 
   if (printText) {
@@ -714,8 +714,18 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, inc
     let titleY = titleMaxY - titleHeight
     console.log("igStory titleHeight", titleHeight)
     console.log("igStory lineCount", lines)
-    outputImage = await outputImage.print(urlFont, 80, 595, url, maxWidth);
+    outputImage = await outputImage.print(urlFont, 80, 295, url, maxWidth);
     outputImage = await outputImage.print(titleFont, 80, titleY, title, maxWidth);
+  } else {
+    // generated with https://ttf2fnt.com/
+    let urlFont = await Jimp.loadFont(
+        `https://s3.amazonaws.com/cdn.mikegajda.com/GothicA1-Regular-32/GothicA1-Regular.ttf.fnt`);
+
+    let url = extractHostname(ogData.ogUrl)
+
+    let maxWidth = 910
+
+    outputImage = await outputImage.print(urlFont, 80, 295, url, maxWidth);
   }
 
   return await outputImage.getBufferAsync("image/jpeg");
