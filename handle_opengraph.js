@@ -688,7 +688,7 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, inc
 
   let background = await new Jimp(1080, 1920, `#${backgroundColor}`)
 
-  let outputImage = background.composite(ogImage, 0, 345);
+  let outputImage = background.composite(ogImage, 0, 100);
 
   if (includeReaction){
     outputImage = outputImage.composite(reactionImage, 67, 1015)
@@ -714,8 +714,8 @@ async function processIgStoryImageToBuffer(ogData, ogImage, backgroundColor, inc
     let titleY = titleMaxY - titleHeight
     console.log("igStory titleHeight", titleHeight)
     console.log("igStory lineCount", lines)
-    outputImage = await outputImage.print(urlFont, 80, 295, url, maxWidth);
-    outputImage = await outputImage.print(titleFont, 80, titleY, title, maxWidth);
+    outputImage = await outputImage.print(urlFont, 80, 800, url, maxWidth);
+    outputImage = await outputImage.print(titleFont, 80, 850, title, maxWidth);
   } else {
     // generated with https://ttf2fnt.com/
     let urlFont = await Jimp.loadFont(
